@@ -10,6 +10,7 @@ data TimeQueue a = TQ [(GameTime,a)] deriving (Show)
 empty :: TimeQueue a
 empty = TQ []
 
+getReadyEvents :: GameTime -> TimeQueue a -> ([a], TimeQueue a)
 getReadyEvents t (TQ es) = (map snd l, TQ r) where
   (l, r) = span ((<= t) . fst) es
 
