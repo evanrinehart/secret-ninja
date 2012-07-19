@@ -1,0 +1,53 @@
+a safecopy migration should probably take the following form
+
+type S = S0
+data S0 = S0 { }
+
+U S
+U S
+U S
+...
+Q S
+Q S
+Q S
+...
+
+ok, and then you change the S
+
+type OldS = S0
+type S = S1
+data S0 = S0 { }
+data S1 = S1 { }
+
+instance Migration S1 where S0 -> S1
+
+U S (edit)
+U S (edit)
+U S (same)
+...
+Q S (same)
+Q S (same)
+Q S (edit)
+...
+Q OldS (same)
+
+and on bootup, in response to a flag, use Q OldS
+to read the old state then migrate the old state
+to the new state type then open a new acid state
+and write the new state then use the new state
+
+OK, then you can edit the code and reboot like this
+remember to disable that flag (wouldnt typecheck anyway)
+
+type S = S1
+data S1 = S1 { }
+
+U S
+U S
+U S
+...
+Q S
+Q S
+...
+
+
