@@ -1,6 +1,7 @@
 module TimeQueue where
 
 import Control.Monad
+import Control.Arrow
 import Data.Functor
 
 import GameTime
@@ -11,8 +12,7 @@ empty :: TimeQueue a
 empty = TQ []
 
 getReadyEvents :: GameTime -> TimeQueue a -> ([a], TimeQueue a)
-getReadyEvents t q = (map snd l, TQ r) where
-  (l,r) = splitAtTime t q
+getReadyEvents t q = (uncurry (***)) (map snd, TQ) (splitAtTime t q)
 
 schedule :: GameTime -> a -> TimeQueue a -> TimeQueue a
 schedule t x q = TQ es' where
