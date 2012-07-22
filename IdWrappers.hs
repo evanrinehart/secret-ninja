@@ -1,18 +1,36 @@
 {-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
 module IdWrappers where
 
+import Control.Monad
 import Data.Typeable
 import Data.SafeCopy
-import Data.ByteString
+import Data.Char
+import qualified Data.ByteString.Char8 as C8
 
-type RawId = ByteString
+import Rng
+
+newtype RawId = RawId C8.ByteString deriving (Eq,Ord,Typeable)
+
+instance Show RawId where
+  show (RawId bs) = C8.unpack bs
 
 newtype RoomId = RoomId RawId deriving (Eq,Ord,Show,Typeable)
 newtype RoomLinkId = RoomLinkid RawId deriving (Eq,Ord,Show,Typeable)
 newtype MobId = MobId RawId deriving (Eq,Ord,Show,Typeable)
 newtype ItemId = ItemId RawId deriving (Eq,Ord,Show,Typeable)
 
+$(deriveSafeCopy 0 'base ''RawId)
 $(deriveSafeCopy 0 'base ''RoomId)
 $(deriveSafeCopy 0 'base ''RoomLinkId)
 $(deriveSafeCopy 0 'base ''MobId)
 $(deriveSafeCopy 0 'base ''ItemId)
+
+
+randomId :: Rng -> IO RawId
+randomId g = do
+  xs <- replicateM 40 (Rng.takeR (0,15) g)
+  return . RawId . C8.pack . map intToDigit $ xs
+
+encodeId :: String -> RawId
+encodeId x = RawId (C8.pack x)
+
