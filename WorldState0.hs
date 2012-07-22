@@ -9,6 +9,7 @@ queries and updates must happen in IO
 import Data.Acid
 import Data.Typeable
 import Data.SafeCopy
+import Data.Time
 import Control.Monad.State
 import Control.Monad.Reader
 import Data.Map
@@ -38,11 +39,11 @@ data WorldState0 = WorldState0 {
   itemLocations :: YMap ItemId ItemLoc,
   roomLinks :: RoomLinkSet,
 
-  eventQueue :: TimeQueue Event
+  eventQueue :: TimeQueue UTCTime Event
 } deriving (Show, Typeable)
 
-blankWorld :: WorldState
-blankWorld = WorldState0 {
+blankWorld :: UTCTime -> WorldState
+blankWorld t0 = WorldState0 {
   mobs = M.singleton mobId0 mob0,
   rooms = M.singleton roomId0 room0,
   items = M.empty,
