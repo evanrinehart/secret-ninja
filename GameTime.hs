@@ -1,3 +1,5 @@
 module GameTime where
 
-type GameTime = Integer
+import Data.Time
+
+type GameTime = UTCTime

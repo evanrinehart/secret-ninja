@@ -1,12 +1,16 @@
+{-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
 module TimeQueue where
 
 import Control.Monad
 import Control.Arrow
 import Data.Functor
+import Data.SafeCopy
 
 import GameTime
 
 data TimeQueue a = TQ [(GameTime,a)] deriving (Show)
+
+$(deriveSafeCopy 0 'base ''TimeQueue)
 
 empty :: TimeQueue a
 empty = TQ []
