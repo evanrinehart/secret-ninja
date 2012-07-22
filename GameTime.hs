@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
 module GameTime where
 
+import Data.SafeCopy
 import Data.Time
 
 {-
@@ -23,6 +25,6 @@ thats 1440 game minutes in a game day
 
 -}
 
+data GameTime = GameTime deriving (Eq,Ord,Show)
 
-
-
+$(deriveSafeCopy 0 'base ''GameTime)

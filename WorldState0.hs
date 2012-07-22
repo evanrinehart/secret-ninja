@@ -22,6 +22,7 @@ import Items
 import RoomLink
 import qualified RoomLink as RL
 import Event
+import GameTime
 import TimeQueue
 import qualified TimeQueue as TQ
 import Mob
@@ -39,7 +40,8 @@ data WorldState0 = WorldState0 {
   itemLocations :: YMap ItemId ItemLoc,
   roomLinks :: RoomLinkSet,
 
-  eventQueue :: TimeQueue UTCTime Event
+  eventQueueRT :: TimeQueue UTCTime Event,
+  eventQueueGT :: TimeQueue GameTime Event
 } deriving (Show, Typeable)
 
 blankWorld :: UTCTime -> WorldState
@@ -50,7 +52,8 @@ blankWorld t0 = WorldState0 {
   mobLocations = Y.empty,
   itemLocations = Y.empty,
   roomLinks = RL.empty,
-  eventQueue = TQ.empty
+  eventQueueRT = TQ.empty,
+  eventQueueGT = TQ.empty
 }
 
 $(deriveSafeCopy 0 'base ''WorldState0)
