@@ -12,13 +12,17 @@ import Data.SafeCopy
 import Control.Monad.State
 import Control.Monad.Reader
 import Data.Map
+import qualified Data.Map as M
 
 import YMap
+import qualified YMap as Y
 import IdWrappers
 import Items
 import RoomLink
+import qualified RoomLink as RL
 import Event
 import TimeQueue
+import qualified TimeQueue as TQ
 import Mob
 import Room
 import Item
@@ -37,26 +41,25 @@ data WorldState0 = WorldState0 {
   eventQueue :: TimeQueue Event
 } deriving (Show, Typeable)
 
+blankWorld :: WorldState
+blankWorld = WorldState0 {
+  mobs = M.singleton mobId0 mob0,
+  rooms = M.singleton roomId0 room0,
+  items = M.empty,
+  mobLocations = Y.empty,
+  itemLocations = Y.empty,
+  roomLinks = RL.empty,
+  eventQueue = TQ.empty
+}
+
 $(deriveSafeCopy 0 'base ''WorldState0)
-
-writeState :: WorldState -> Update WorldState ()
-writeState w = put w
-
-writeY :: YMap ItemId ItemLoc -> Update WorldState ()
-writeY s = do
-  w <- get
-  put (w {itemLocations = s})
 
 queryState :: Query WorldState WorldState
 queryState = ask
 
-queryY :: Query WorldState RoomLinkSet
-queryY = do
-  w <- ask
-  return (roomLinks w)
-
 $(makeAcidic ''WorldState0
-  ['writeState, 'queryState, 'queryY, 'writeY])
+  ['queryState])
+
 {-
 queryState0 :: Query WorldState0 WorldState0
 queryState0 = ask

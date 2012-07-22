@@ -34,6 +34,9 @@ instance Indexable RoomLink where
       ixFun (pure . toRoom)
     ]
 
+empty :: RoomLinkSet
+empty = Data.IxSet.empty
+
 from :: RoomId -> RoomLinkSet -> [RoomLink]
 from rid = toList . getEQ (FromRoom rid)
 
