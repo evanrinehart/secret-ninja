@@ -1,6 +1,7 @@
 module Main where
 
-import qualified YMap as Y
+import Connection
 
 main = do
-  let s = fold
+  (x,y) <- bootNetwork
+  return ()

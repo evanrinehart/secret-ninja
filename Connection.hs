@@ -14,6 +14,15 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.IORef
 
+{-
+use masterSpawn to boot up the networking stuff
+you will get a ConnOutput and a MVar ConnSet to
+play with in the main thread.
+
+listConnections is meant to be used to inspect
+the currently existing connections.
+-}
+
 data ReadConn =
   Disconnect |
   ValidLine ByteString ByteString |
@@ -23,11 +32,25 @@ data ReadConn =
 type ConnId = Integer
 type ConnSet = Map ConnId (Handle, ThreadId)
 
--- in this module, conn output is coming into the server
+-- in this module, conn output is coming INTO the server
 newtype ConnOutput = ConnOutput (MVar (ConnId, ByteString))
 newtype NewConnInSet = NewConnInSet (MVar (ConnId, Handle, ThreadId))
 newtype DelConnFromSet = DelConnFromSet (MVar ConnId)
 
+--public api
+bootNetwork :: IO (ConnOutput, MVar ConnSet)
+bootNetwork = do
+  out <- fmap ConnOutput newEmptyMVar
+  (newConn, delConn, s) <- connSetThread
+  forkIO (acceptThread out newConn delConn)
+  return (out, s)
+
+listConnections :: MVar ConnSet -> IO [ConnId]
+listConnections mv = fmap M.keys (readMVar mv)
+
+
+-- internal stuff
+--
 connOutput :: ConnOutput -> ConnId -> ByteString -> IO ()
 connOutput (ConnOutput mvo) n bs = putMVar mvo (n, bs)
 
@@ -74,18 +97,20 @@ dieIO kill h i = do
 
 connSetThread :: IO (NewConnInSet, DelConnFromSet, MVar ConnSet)
 connSetThread = do
-  s <- newMVar (M.empty)
+  mvs <- newMVar (M.empty)
   mvn <- newEmptyMVar
   mvk <- newEmptyMVar
   forkIO . forever $ do
     (i,h,tid) <- takeMVar mvn
+    modifyMVar_ mvs (return . M.insert i (h,tid))
     putStrLn "connset new"
     return ()
   forkIO . forever $ do
     i <- takeMVar mvk
+    modifyMVar_ mvs (return . M.delete i)
     putStrLn "connset remove"
     return ()
-  return (NewConnInSet mvn, DelConnFromSet mvk, s)
+  return (NewConnInSet mvn, DelConnFromSet mvk, mvs)
 
 acceptThread ::
   ConnOutput ->
@@ -107,15 +132,4 @@ acceptThread out newConn delConn = do
     putStrLn ("forked connection "++show i'++" thread "++show tid)
     newConnInSet newConn i' h tid
     modifyIORef v (+1)
-
-masterSpawn :: IO (ConnOutput, MVar ConnSet)
-masterSpawn = do
-  out <- fmap ConnOutput newEmptyMVar
-  (newConn, delConn, s) <- connSetThread
-  forkIO (acceptThread out newConn delConn)
-  return (out, s)
-
-
-listConnections :: MVar ConnSet -> IO [ConnId]
-listConnections mv = fmap M.keys (readMVar mv)
 
