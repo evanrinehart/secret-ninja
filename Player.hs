@@ -14,7 +14,8 @@ import Data.Text (Text)
 import Data.Text.Encoding
 
 import WorldState0
-import Connection
+import ConnSet
+import Misc
 import Dialog
 
 type Player a = ReaderT PlayData IO a
@@ -70,7 +71,7 @@ doDie msg = do
   i <- asks connId
   doIt <- asks die
   let finalMsg = "connection "++show i++" dead: "++msg
-  liftIO (doIt finalMsg)
+  liftIO (doIt finalMsg) -- should kill this thread
   error "doDie: this should not have been executed"
 
 playerDialog :: Dialog ByteString a -> Player a
