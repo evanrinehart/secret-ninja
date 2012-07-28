@@ -51,7 +51,9 @@ acceptThread acid mvConns killServer = do
       inputBuf = mvb,
       die = \msg -> do
         modifyMVar_ mvConns (return . M.delete i')
-        putStrLn msg,
+        putStrLn msg
+        tid <- myThreadId
+        killThread tid,
       killServer = killServer }
     conns <- takeMVar mvConns
     tid <- spawnPlayer pd

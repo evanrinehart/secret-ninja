@@ -5,6 +5,7 @@ import Data.ByteString.Char8
 import qualified Data.ByteString as BS
 import System.IO
 import Control.Concurrent.MVar
+import Data.String
 
 data ReadConn =
   Disconnect |
@@ -23,3 +24,7 @@ getLineBuf h buf = do
        | not (BS.null t) -> ValidLine h (BS.drop 2 t)
        | BS.length buf'' < bufSize -> NeedMore buf''
        | otherwise -> TooLong buf''
+
+crlf :: IsString a => a
+crlf = "\r\n"
+

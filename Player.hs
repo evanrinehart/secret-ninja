@@ -5,6 +5,7 @@ import Prelude hiding (getLine)
 import System.IO hiding (getLine)
 import Control.Monad.Reader
 import Control.Monad
+import Data.Monoid
 import Data.Acid
 import Control.Concurrent.MVar
 import Control.Concurrent
@@ -37,7 +38,11 @@ spawnPlayer pd = forkIO (runReaderT login pd)
 
 login :: Player ()
 login = do
-  send "fuck you dude"
+  send "fuck you dude> "
+  ans <- getLine
+  sendColor BrightGreen ("you just said: " <> ans <> crlf)
+  send "again, fuck you. good bye\r\n"
+  doDie "connection terminated"
 
 send' :: ByteString -> Player ()
 send' bs = do
@@ -52,8 +57,8 @@ send txt = do
 sendColor :: Color -> Text -> Player ()
 sendColor c txt = send $ C.encode (C.color c txt)
 
-getLine :: Player ByteString
-getLine = do
+getLine' :: Player ByteString
+getLine' = do
   buf <- readVar inputBuf
   h <- asks handle
   result <- liftIO (getLineBuf h buf)
@@ -63,9 +68,12 @@ getLine = do
       return l
     NeedMore buf' -> do
       writeVar inputBuf buf'
-      getLine
+      getLine'
     Disconnect -> doDie "disconnect"
     TooLong _ -> doDie "input buffer limit reached"
+
+getLine :: Player Text
+getLine = fmap decodeUtf8 getLine'
 
 writeVar :: (PlayData -> MVar a) -> a -> Player ()
 writeVar field x = do
@@ -89,6 +97,6 @@ playerDialog :: Dialog ByteString a -> Player a
 playerDialog (Answer x) = return x
 playerDialog (Question q cont) = do
   send' q
-  ans <- getLine
+  ans <- getLine'
   playerDialog (cont ans)
 
