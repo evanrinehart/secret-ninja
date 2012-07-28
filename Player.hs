@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Player where
 
 import Prelude hiding (getLine)
@@ -17,6 +18,8 @@ import WorldState0
 import ConnSet
 import Misc
 import Dialog
+import CText
+import qualified CText as C
 
 type Player a = ReaderT PlayData IO a
 
@@ -29,8 +32,12 @@ data PlayData = PlayData {
   killServer :: IO ()
 }
 
-spawnPlayer :: PlayData -> Player () -> IO ThreadId
-spawnPlayer pd pl = forkIO (runReaderT pl pd)
+spawnPlayer :: PlayData -> IO ThreadId
+spawnPlayer pd = forkIO (runReaderT login pd)
+
+login :: Player ()
+login = do
+  send "fuck you dude"
 
 send' :: ByteString -> Player ()
 send' bs = do
@@ -41,6 +48,9 @@ send :: Text -> Player ()
 send txt = do
   h <- asks handle
   liftIO $ BS.hPut h (encodeUtf8 txt)
+
+sendColor :: Color -> Text -> Player ()
+sendColor c txt = send $ C.encode (C.color c txt)
 
 getLine :: Player ByteString
 getLine = do

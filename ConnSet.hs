@@ -14,23 +14,11 @@ type ConnSet = Map ConnId (Handle, ThreadId)
 listConnections :: MVar ConnSet -> IO [ConnId]
 listConnections mv = fmap M.keys (readMVar mv)
 
-connSetThread :: IO (
-    MVar (ConnId,Handle,ThreadId),
-    MVar ConnId,
-    MVar ConnSet
-  )
-connSetThread = do
-  mvs <- newMVar (M.empty)
-  mvn <- newEmptyMVar
-  mvk <- newEmptyMVar
-  forkIO . forever $ do
-    (i,h,tid) <- takeMVar mvn
-    modifyMVar_ mvs (return . M.insert i (h,tid))
-    putStrLn "connset new"
-    return ()
-  forkIO . forever $ do
-    i <- takeMVar mvk
-    modifyMVar_ mvs (return . M.delete i)
-    putStrLn "connset remove"
-    return ()
-  return (mvn, mvk, mvs)
+mkConnSet :: IO (MVar ConnSet)
+mkConnSet = newMVar (M.empty)
+
+addToConnSet :: MVar ConnSet -> Integer -> Handle -> ThreadId -> IO ()
+addToConnSet mv i h tid = modifyMVar_ mv (return . M.insert i (h,tid))
+
+delFromConnSet :: MVar ConnSet -> Integer -> IO ()
+delFromConnSet mv i = modifyMVar_ mv (return . M.delete i)
