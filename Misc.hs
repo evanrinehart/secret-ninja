@@ -4,6 +4,7 @@ module Misc where
 import Data.ByteString.Char8
 import qualified Data.ByteString as BS
 import System.IO
+import Control.Concurrent.MVar
 
 data ReadConn =
   Disconnect |
@@ -23,3 +24,5 @@ getLineBuf h buf = do
        | BS.length buf'' < bufSize -> NeedMore buf''
        | otherwise -> TooLong buf''
 
+killServer :: MVar () -> IO ()
+killServer mv = putMVar mv ()

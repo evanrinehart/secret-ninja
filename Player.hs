@@ -25,7 +25,8 @@ data PlayData = PlayData {
   connId :: ConnId,
   world :: AcidState World,
   inputBuf :: MVar ByteString,
-  die :: String -> IO ()
+  die :: String -> IO (),
+  killServer :: IO ()
 }
 
 spawnPlayer :: PlayData -> Player () -> IO ThreadId
