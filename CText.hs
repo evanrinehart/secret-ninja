@@ -25,23 +25,26 @@ data Color =
   BrightWhite deriving (Eq,Ord,Show)
 
 data CFrag = NCF Text | CF Color Text deriving (Eq,Ord,Show)
-data CText = CText [CFrag] deriving (Eq,Ord)
+data CText = CText (Endo [CFrag])
 
 instance Monoid CText where
-  CText xs `mappend` CText ys = CText (xs ++ ys)
-  mempty = CText []
+  CText f `mappend` CText g = CText (f `mappend` g)
+  mempty = CText mempty
 
 instance IsString CText where
-  fromString s = CText [NCF (fromString s)]
+  fromString = fromText . fromString
 
 instance Show CText where
   show ct = (show . encode) ct
 
+fragment :: CFrag -> CText
+fragment cf = (CText . Endo) ([cf] ++)
+
 fromText :: Text -> CText
-fromText txt = CText [NCF txt]
+fromText = fragment . NCF
 
 color :: Color -> Text -> CText
-color c txt = CText [CF c txt]
+color c txt = fragment (CF c txt)
 
 codeTab :: Color -> Text
 codeTab Black = "\ESC[30m"
@@ -69,4 +72,4 @@ encodeFragment (NCF txt) = [txt]
 encodeFragment (CF c txt) = [codeTab c, txt, reset]
 
 encode :: CText -> Text
-encode (CText frags) = T.concat . concat . map encodeFragment $ frags
+encode (CText (Endo f)) = (T.concat . concat . map encodeFragment) (f [])
