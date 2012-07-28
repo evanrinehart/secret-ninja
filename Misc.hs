@@ -14,7 +14,7 @@ data ReadConn =
 
 getLineBuf :: Handle -> ByteString -> IO ReadConn
 getLineBuf h buf = do
-  let bufSize = 10
+  let bufSize = 256
   buf' <- BS.hGetSome h (bufSize - BS.length buf)
   let buf'' = BS.append buf buf'
   let (h,t) = BS.breakSubstring "\r\n" buf''
@@ -23,6 +23,3 @@ getLineBuf h buf = do
        | not (BS.null t) -> ValidLine h (BS.drop 2 t)
        | BS.length buf'' < bufSize -> NeedMore buf''
        | otherwise -> TooLong buf''
-
-killServer :: MVar () -> IO ()
-killServer mv = putMVar mv ()
