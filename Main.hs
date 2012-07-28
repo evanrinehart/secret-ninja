@@ -2,23 +2,24 @@ module Main where
 
 import Connection
 import WorldState
+import Player
 
 main = do
---  (out, connSet) <- bootNetwork
+  acid <- loadWorld
+  mvConns <- bootNetwork
   return ()
 
-bootNetwork :: IO (MVar ConnSet)
-bootNetwork = do
-  (mvn, mvk, mvs) <- connSetThread
-  forkIO (acceptThread out newConn delConn)
-  return (out, s)
+bootNetwork :: AcidState World -> IO (MVar ConnSet)
+bootNetwork acid = do
+  mvConns <- connSetThread
+  forkIO (acceptThread acid mvConns)
+  return mvConns
 
 acceptThread ::
-  ConnOutput ->
-  NewConnInSet -> 
-  DelConnFromSet -> 
+  AcidState World ->
+  MVar ConnSet -> 
   IO ()
-acceptThread out newConn delConn = do
+acceptThread acid mvConns = do
   s <- listenOn (PortNumber 4545)
   v <- newIORef 0
   forever $ do
@@ -27,9 +28,17 @@ acceptThread out newConn delConn = do
     print hostname
     print port
     i' <- readIORef v
-    tid <- forkIO $ connThread h
-      (dieIO delConn h i')
-      (connOutput out i')
+    mvb <- emptyInputBuf
+    let pl = PlayData
+      {handle = h
+      ,connId = i'
+      ,world = acid
+      ,inputBuf = mvb
+      ,die = \msg -> do
+         modifyMVar_ mvConns (M.delete i')
+         putStrLn msg}
+    conns <- takeMVar mvConns
+    tid <- spawnPlayer pl
+    putMVar mvConns (M.insert i' (h,tid) conns)
     putStrLn ("forked connection "++show i'++" thread "++show tid)
-    newConnInSet newConn i' h tid
     modifyIORef v (+1)

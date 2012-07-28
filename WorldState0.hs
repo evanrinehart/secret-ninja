@@ -29,7 +29,7 @@ import Mob
 import Room
 import Item
 
-type WorldState = WorldState0
+type World = WorldState0
 
 data WorldState0 = WorldState0 {
   mobs :: Map MobId Mob,
@@ -44,8 +44,8 @@ data WorldState0 = WorldState0 {
   eventQueueGT :: TimeQueue GameTime Event
 } deriving (Show, Typeable)
 
-blankWorld :: UTCTime -> WorldState
-blankWorld t0 = WorldState0 {
+blankWorld :: World
+blankWorld = WorldState0 {
   mobs = M.singleton mobId0 mob0,
   rooms = M.singleton roomId0 room0,
   items = M.empty,
@@ -58,11 +58,15 @@ blankWorld t0 = WorldState0 {
 
 $(deriveSafeCopy 0 'base ''WorldState0)
 
-queryState :: Query WorldState WorldState
+queryState :: Query World World
 queryState = ask
 
 $(makeAcidic ''WorldState0
   ['queryState])
+
+
+loadWorld :: IO (AcidState World)
+loadWorld = openLocalState blankWorld
 
 {-
 queryState0 :: Query WorldState0 WorldState0

@@ -23,7 +23,7 @@ type Player a = ReaderT PlayData IO a
 data PlayData = PlayData {
   handle :: Handle,
   connId :: ConnId,
-  world :: AcidState WorldState,
+  world :: AcidState World,
   inputBuf :: MVar ByteString,
   die :: String -> IO ()
 }
