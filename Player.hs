@@ -12,8 +12,9 @@ import Control.Concurrent
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
-import Data.Text (Text)
+import Data.Text
 import Data.Text.Encoding
+import Data.Attoparsec
 
 import WorldState0
 import ConnSet
@@ -38,11 +39,27 @@ spawnPlayer pd = forkIO (runReaderT login pd)
 
 login :: Player ()
 login = do
-  send "fuck you dude> "
-  ans <- getLine
-  sendColor BrightGreen ("you just said: " <> ans <> crlf)
-  send "again, fuck you. good bye\r\n"
+  send "username> "
+  username <- getLine
+  password <- askForPassword "password> "
+  send ("ok: " <> username <> " " <> password <> crlf)
   doDie "connection terminated"
+
+askForPassword :: Text -> Player Text
+askForPassword msg = do
+  send msg
+  send' "\255\251\1"
+  Right password <- fmap (parseOnly telnetPassword) getLine'
+  return password
+
+telnetPassword :: Parser Text
+telnetPassword = do
+  hmm <- peekWord8
+  case hmm of
+    Nothing -> return ""
+    Just w -> if w == 255
+      then fmap (decodeUtf8 . BS.drop 3) takeByteString
+      else fmap decodeUtf8 takeByteString
 
 send' :: ByteString -> Player ()
 send' bs = do
