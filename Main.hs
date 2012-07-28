@@ -52,6 +52,7 @@ acceptThread acid mvConns killServer = do
       die = \msg -> do
         modifyMVar_ mvConns (return . M.delete i')
         putStrLn msg
+        hClose h
         tid <- myThreadId
         killThread tid,
       killServer = killServer }
