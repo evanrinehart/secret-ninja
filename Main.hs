@@ -19,15 +19,15 @@ main = do
   acid <- loadWorld
   mainWait <- newEmptyMVar
   let killServer = putMVar mainWait ()
-  mvConns <- bootNetwork acid killServer
+  (mvConns <- bootNetwork acid killServer
   
   void (takeMVar mainWait)
 
 bootNetwork :: AcidState World -> IO () -> IO (MVar ConnSet)
 bootNetwork acid killServer = do
   mvConns <- mkConnSet
-  forkIO (acceptThread acid mvConns killServer)
-  return mvConns
+  aid <- forkIO (acceptThread acid mvConns killServer)
+  return (aid, mvConns)
 
 acceptThread ::
   AcidState World ->

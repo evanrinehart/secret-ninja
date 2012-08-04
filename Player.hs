@@ -20,16 +20,14 @@ import WorldState0
 import ConnSet
 import Misc
 import Dialog
-import CText
-import qualified CText as C
+import Rainbow
 
 type Player a = ReaderT PlayData IO a
 
 data PlayData = PlayData {
-  handle :: Handle,
-  connId :: ConnId,
+  myConn :: Conn,
   world :: AcidState World,
-  inputBuf :: MVar ByteString,
+  connSet :: MVar ConnSet,
   die :: String -> IO (),
   killServer :: IO ()
 }
@@ -39,11 +37,21 @@ spawnPlayer pd = forkIO (runReaderT login pd)
 
 login :: Player ()
 login = do
-  send "username> "
+  send "username: "
   username <- getLine
-  password <- askForPassword "password> "
-  send ("ok: " <> username <> " " <> password <> crlf)
-  doDie "connection terminated"
+  password <- askForPassword "password: "
+  commandLoop
+
+commandLoop :: Player ()
+commandLoop = forever $ do
+  raw <- getLine
+  let result = parseOnly commandParser0 raw
+  case result of
+    Left _ -> sendLn "WRONG"
+    Right command -> case command of
+      GMsg msg -> sendToAll msg
+      Quit -> doDie "quitting"
+    
 
 askForPassword :: Text -> Player Text
 askForPassword msg = do
@@ -71,11 +79,31 @@ send txt = do
   h <- asks handle
   liftIO $ BS.hPut h (encodeUtf8 txt)
 
-sendColor :: Color -> Text -> Player ()
-sendColor c txt = send $ C.encode (C.color c txt)
+sendLn :: Text -> Player ()
+sendLn txt = do
+  send txt
+  send crlf
+
+sendToAll :: Text -> Player ()
+sendToAll msg = do
+  handles <- fmap (map fst) (asks connSet >>= readMVar)
+  forM_ handles (sendTo msg)
+
+sendToAllLn :: Text -> Player ()
+sendToAllLn txt = do
+  sendToAll txt
+  sendToAll crlf
+
+sendTo :: Text -> Handle -> Player ()
+sendTo msg h = liftIO $ hPut h (encodeUtf8 msg)
+
+--PUT THIS IN OTHER MODULE
+colorize :: Color -> Text -> Text
+colorize c txt = C.encode . C.color c
 
 getLine' :: Player ByteString
 getLine' = do
+  result <- liftIO (getLineBuf h buf
   buf <- readVar inputBuf
   h <- asks handle
   result <- liftIO (getLineBuf h buf)

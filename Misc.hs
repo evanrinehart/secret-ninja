@@ -7,23 +7,6 @@ import System.IO
 import Control.Concurrent.MVar
 import Data.String
 
-data ReadConn =
-  Disconnect |
-  ValidLine ByteString ByteString |
-  NeedMore ByteString |
-  TooLong ByteString deriving (Show)
-
-getLineBuf :: Handle -> ByteString -> IO ReadConn
-getLineBuf h buf = do
-  let bufSize = 256
-  buf' <- BS.hGetSome h (bufSize - BS.length buf)
-  let buf'' = BS.append buf buf'
-  let (h,t) = BS.breakSubstring "\r\n" buf''
-  return $ case () of
-    () | BS.null buf' -> Disconnect
-       | not (BS.null t) -> ValidLine h (BS.drop 2 t)
-       | BS.length buf'' < bufSize -> NeedMore buf''
-       | otherwise -> TooLong buf''
 
 crlf :: IsString a => a
 crlf = "\r\n"

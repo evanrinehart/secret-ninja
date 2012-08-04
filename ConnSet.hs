@@ -8,8 +8,7 @@ import Data.ByteString (ByteString)
 import Data.Map (Map)
 import qualified Data.Map as M
 
-type ConnId = Integer
-type ConnSet = Map ConnId (Handle, ThreadId)
+type ConnSet = Map ConnId Conn
 
 listConnections :: MVar ConnSet -> IO [ConnId]
 listConnections mv = fmap M.keys (readMVar mv)
@@ -22,3 +21,7 @@ addToConnSet mv i h tid = modifyMVar_ mv (return . M.insert i (h,tid))
 
 delFromConnSet :: MVar ConnSet -> Integer -> IO ()
 delFromConnSet mv i = modifyMVar_ mv (return . M.delete i)
+
+lookupConn :: ConnId -> MVar ConnSet -> IO (Maybe Conn)
+lookupConn cid mvs = fmap (M.lookup cid cs) readMVar mvs
+

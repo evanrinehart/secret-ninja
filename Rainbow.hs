@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module CText where
+module Rainbow where
 
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -25,25 +25,25 @@ data Color =
   BrightWhite deriving (Eq,Ord,Show)
 
 data CFrag = NCF Text | CF Color Text deriving (Eq,Ord,Show)
-data CText = CText (Endo [CFrag])
+data Rainbow = Rainbow (Endo [CFrag])
 
-instance Monoid CText where
-  CText f `mappend` CText g = CText (f `mappend` g)
-  mempty = CText mempty
+instance Monoid Rainbow where
+  Rainbow f `mappend` Rainbow g = Rainbow (f `mappend` g)
+  mempty = Rainbow mempty
 
-instance IsString CText where
+instance IsString Rainbow where
   fromString = fromText . fromString
 
-instance Show CText where
+instance Show Rainbow where
   show ct = (show . encode) ct
 
-fragment :: CFrag -> CText
-fragment cf = (CText . Endo) ([cf] ++)
+fragment :: CFrag -> Rainbow
+fragment cf = (Rainbow . Endo) ([cf] ++)
 
-fromText :: Text -> CText
+fromText :: Text -> Rainbow
 fromText = fragment . NCF
 
-color :: Color -> Text -> CText
+color :: Color -> Text -> Rainbow
 color c txt = fragment (CF c txt)
 
 codeTab :: Color -> Text
@@ -71,5 +71,5 @@ encodeFragment :: CFrag -> [Text]
 encodeFragment (NCF txt) = [txt]
 encodeFragment (CF c txt) = [codeTab c, txt, reset]
 
-encode :: CText -> Text
-encode (CText (Endo f)) = (T.concat . concat . map encodeFragment) (f [])
+encode :: Rainbow -> Text
+encode (Rainbow (Endo f)) = (T.concat . concat . map encodeFragment) (f [])
