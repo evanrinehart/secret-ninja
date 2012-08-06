@@ -69,38 +69,19 @@ telnetPassword = do
       then fmap (decodeUtf8 . BS.drop 3) takeByteString
       else fmap decodeUtf8 takeByteString
 
+sendTo :: ConnId -> Rainbow Text -> Player ()
+sendTo' :: ConnId -> ByteString -> Player ()
+
+send :: Rainbow Text -> Player ()
+send rb = asks myConn >>= liftIO . write (encode rb)
+
 send' :: ByteString -> Player ()
 send' bs = do
-  h <- asks handle
-  liftIO $ BS.hPut h bs
+  conn <- asks myConn
+  liftIO (write bs conn)
 
-send :: Text -> Player ()
-send txt = do
-  h <- asks handle
-  liftIO $ BS.hPut h (encodeUtf8 txt)
-
-sendLn :: Text -> Player ()
-sendLn txt = do
-  send txt
-  send crlf
-
-sendToAll :: Text -> Player ()
-sendToAll msg = do
-  handles <- fmap (map fst) (asks connSet >>= readMVar)
-  forM_ handles (sendTo msg)
-
-sendToAllLn :: Text -> Player ()
-sendToAllLn txt = do
-  sendToAll txt
-  sendToAll crlf
-
-sendTo :: Text -> Handle -> Player ()
-sendTo msg h = liftIO $ hPut h (encodeUtf8 msg)
 
 --PUT THIS IN OTHER MODULE
-colorize :: Color -> Text -> Text
-colorize c txt = C.encode . C.color c
-
 getLine' :: Player ByteString
 getLine' = do
   result <- liftIO (getLineBuf h buf
@@ -144,4 +125,7 @@ playerDialog (Question q cont) = do
   send' q
   ans <- getLine'
   playerDialog (cont ans)
+
+
+
 

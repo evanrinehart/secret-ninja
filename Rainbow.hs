@@ -71,4 +71,7 @@ encodeFragment (CF c a) = [codeTab c, a, reset]
 compile :: (IsString a, Monoid a) => Rainbow a -> a
 compile (Rainbow (Endo f)) = (mconcat . concat . map encodeFragment) (f [])
 
+colorize :: (IsString a, Monoid a) => Color -> a -> a
+colorize c txt = compile (color c txt)
+
 
