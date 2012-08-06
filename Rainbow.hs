@@ -1,8 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Rainbow where
 
+{-
+public api here...
+data Color
+data Rainbow a (Monoid, IsString)
+color :: Color -> a -> Rainbow a
+compile :: (IsString a, Monoid a) => Rainbow a -> a
+-}
+
+
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Text.Encoding
+import Data.ByteString (ByteString)
 import Data.Monoid
 import Data.String
 
@@ -71,7 +82,7 @@ encodeFragment (CF c a) = [codeTab c, a, reset]
 compile :: (IsString a, Monoid a) => Rainbow a -> a
 compile (Rainbow (Endo f)) = (mconcat . concat . map encodeFragment) (f [])
 
-colorize :: (IsString a, Monoid a) => Color -> a -> a
-colorize c txt = compile (color c txt)
+encode :: Rainbow Text -> ByteString
+encode = encodeUtf8 . compile
 
 
