@@ -14,7 +14,6 @@ type ConnId = Integer
 data Conn = Conn {
   handle :: Handle,
   writeLock :: MVar (), -- take to lock
-  rThread :: ThreadId,
   inputBuf :: MVar ByteString,
   connId :: ConnId,
 }
@@ -25,29 +24,44 @@ data ReadConn =
   NeedMore ByteString |
   TooLong ByteString deriving (Show)
 
-
 instance Show Conn where
   show = ("Connection "++) . show . connId
 
-withWriteLock :: IO () -> Conn -> IO ()
-withWriteLock io (Conn _ lock _ _) = withMVar (const io) lock
+new :: Handle -> ConnId -> IO Conn
+new h cid = do
+  wl <- newMVar ()
+  ibuf <- newMVar BS.empty
+  return $ Conn {
+    handle = h,
+    writeLock = wl,
+    inputBuf = ibuf,
+    connId = cid
+  }
 
 write :: ByteString -> Conn -> IO ()
-write raw (Conn _ _ h _) = BS.hPut h raw
+write raw conn = BS.hPut (handle conn) raw
 
 read :: Conn -> Int -> IO ByteString
-read (Conn _ _ h _) n = BS.hGetSome h n
+read conn n = BS.hGetSome (handle conn) n
 
-killThread :: Conn -> IO ()
-killThread (Conn tid _ _ _) = T.killThread tid
+getLine :: Conn -> IO (Either String ByteString)
+getLine conn = do
+  buf <- inputBuf conn
+  result <- getLineBuf conn
+  case result of
+    Disconnect -> return (Left "remote host disconnected")
+    TooLong _ -> return (Left "remote host sent a too-long line")
+    ValidLine l buf' -> do
+      updateBuffer conn buf'
+      return (Right l)
+    NeedMore buf' -> do
+      updateBuffer conn buf'
+      getLine conn
 
-getLine :: Conn -> IO ByteString
-getLine
-
-getLineBuf :: Handle -> ByteString -> IO ReadConn
-getLineBuf h buf = do
+getLineBuf :: Conn -> ByteString -> IO ReadConn
+getLineBuf conn buf = do
   let bufSize = 256
-  buf' <- BS.hGetSome h (bufSize - BS.length buf)
+  buf' <- read conn (bufSize - BS.length buf)
   let buf'' = BS.append buf buf'
   let (h,t) = BS.breakSubstring "\r\n" buf''
   return $ case () of
@@ -56,3 +70,5 @@ getLineBuf h buf = do
        | BS.length buf'' < bufSize -> NeedMore buf''
        | otherwise -> TooLong buf''
 
+updateBuffer :: Conn -> ByteString -> IO ()
+updateBuffer conn buf = swapMVar (inputBuf conn) buf >> return ()

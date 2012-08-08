@@ -10,18 +10,26 @@ import qualified Data.Map as M
 
 type ConnSet = Map ConnId Conn
 
-listConnections :: MVar ConnSet -> IO [ConnId]
-listConnections mv = fmap M.keys (readMVar mv)
+contents :: MVar ConnSet -> IO [Conn]
+contents mv = fmap M.elems (readMVar mv)
 
-mkConnSet :: IO (MVar ConnSet)
-mkConnSet = newMVar (M.empty)
+new :: IO (MVar ConnSet)
+new = newMVar (M.empty)
 
-addToConnSet :: MVar ConnSet -> Integer -> Handle -> ThreadId -> IO ()
-addToConnSet mv i h tid = modifyMVar_ mv (return . M.insert i (h,tid))
+append :: MVar ConnSet -> Integer -> Handle -> ThreadId -> IO ()
+append mv i h tid = modifyMVar_ mv (return . M.insert i (h,tid))
 
-delFromConnSet :: MVar ConnSet -> Integer -> IO ()
-delFromConnSet mv i = modifyMVar_ mv (return . M.delete i)
+delete :: MVar ConnSet -> Integer -> IO ()
+delete mv i = modifyMVar_ mv (return . M.delete i)
 
-lookupConn :: ConnId -> MVar ConnSet -> IO (Maybe Conn)
-lookupConn cid mvs = fmap (M.lookup cid cs) readMVar mvs
+lookup :: ConnId -> MVar ConnSet -> IO (Maybe Conn)
+lookup cid mvs = fmap (M.lookup cid cs) readMVar mvs
+
+spawnConn :: MVar ConnSet -> Conn -> IO () -> IO ()
+spawnConn cs c io = forkIO (finally io (CS.delete cs (connId c)))
+
+killConn :: MVar ConnSet -> ConnId -> IO ()
+killConn cs cid = do
+  conn <- CS.lookup cs cid
+  maybe (return ()) (hClose . handle) conn
 
