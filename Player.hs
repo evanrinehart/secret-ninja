@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Player where
 
 import Prelude hiding (getLine)
@@ -15,12 +14,18 @@ import qualified Data.Text as T
 import Data.Text
 import Data.Text.Encoding
 import Data.Attoparsec
+import qualified Data.Map as M
 
 import WorldState0
-import ConnSet
+import Conn hiding (getLine)
+import qualified Conn (getLine)
+import ConnSet (ConnSet)
+import qualified ConnSet as CS
 import Misc
 import Dialog
 import Rainbow
+import Rng
+import Output
 
 type Player a = ReaderT PlayData IO a
 
@@ -29,103 +34,109 @@ data PlayData = PlayData {
   world :: AcidState World,
   connSet :: MVar ConnSet,
   die :: String -> IO (),
+  rng :: MVar Rng,
   killServer :: IO ()
 }
 
-spawnPlayer :: PlayData -> IO ThreadId
-spawnPlayer pd = forkIO (runReaderT login pd)
+mkPlayData ::
+  Conn ->
+  AcidState World ->
+  MVar ConnSet ->
+  MVar Rng ->
+  IO () -> PlayData
+mkPlayData c acid cs g k =
+  PlayData {
+    myConn = c,
+    world = acid,
+    connSet = cs,
+    die = mkDie cs (connId c) (chandle c),
+    rng = g,
+    killServer = k
+  }
+
+mkDie :: MVar ConnSet -> ConnId -> Handle -> String -> IO ()
+mkDie cs cid h msg = do
+  modifyMVar_ cs (return . M.delete cid)
+  putStrLn msg
+  hClose h
+  tid <- myThreadId
+  killThread tid
+
+runPlayer :: PlayData -> IO ()
+runPlayer pd = runReaderT login pd
+
+rand :: (Int,Int) -> Player Int
+rand range = do
+  g <- asks rng
+  liftIO $ withMVar g (Rng.randomR range)
 
 login :: Player ()
 login = do
   send "username: "
   username <- getLine
   password <- askForPassword "password: "
-  commandLoop
+  sendLn "fuck all yall"
+  send "one last question: "
+  _ <- getLine
+  disconnect "test over, disconnecting"
 
-commandLoop :: Player ()
-commandLoop = forever $ do
-  raw <- getLine
-  let result = parseOnly commandParser0 raw
-  case result of
-    Left _ -> sendLn "WRONG"
-    Right command -> case command of
-      GMsg msg -> sendToAll msg
-      Quit -> doDie "quitting"
-    
+disconnect :: String -> Player a
+disconnect msg = do
+  io <- asks die
+  liftIO (io msg)
+  error "die didnt"
 
-askForPassword :: Text -> Player Text
+askForPassword :: String -> Player Text
 askForPassword msg = do
   send msg
-  send' "\255\251\1"
-  Right password <- fmap (parseOnly telnetPassword) getLine'
+  send "\255\251\1"
+  Right password <- fmap (parseOnly telnetPassword) getLine
   return password
+
+sendTo :: Output a => Conn -> a -> Player ()
+sendTo conn = liftIO . flip Conn.write conn . encode
+
+sendToLn :: Output a => Conn -> a -> Player ()
+sendToLn conn x = do
+  sendTo conn x
+  sendTo conn "\r\n"
+
+send :: Output a => a -> Player ()
+send x = asks myConn >>= flip sendTo x
+
+sendLn :: Output a => a -> Player ()
+sendLn x = asks myConn >>= flip sendToLn x
+
+sendLock :: (Conn -> Player ()) -> Player ()
+sendLock use = do
+  conn <- asks myConn
+  r <- ask
+  liftIO $ withMVar (writeLock conn) (\_ -> runReaderT (use conn) r)
+
+sendToLock :: ConnId -> (Conn -> Player ()) -> Player ()
+sendToLock cid use = do
+  r <- ask
+  mv <- asks connSet
+  conny <- liftIO $ withMVar mv (return . M.lookup cid)
+  case conny of
+    Nothing -> return ()
+    Just conn -> liftIO $ do
+      withMVar (writeLock conn) (\_ -> runReaderT (use conn) r)
 
 telnetPassword :: Parser Text
 telnetPassword = do
   hmm <- peekWord8
   case hmm of
-    Nothing -> return ""
+    Nothing -> return (T.empty)
     Just w -> if w == 255
       then fmap (decodeUtf8 . BS.drop 3) takeByteString
       else fmap decodeUtf8 takeByteString
 
-sendTo :: ConnId -> Rainbow Text -> Player ()
-sendTo' :: ConnId -> ByteString -> Player ()
-
-send :: Rainbow Text -> Player ()
-send rb = asks myConn >>= liftIO . write (encode rb)
-
-send' :: ByteString -> Player ()
-send' bs = do
+getLine :: Player ByteString
+getLine = do
   conn <- asks myConn
-  liftIO (write bs conn)
-
-
---PUT THIS IN OTHER MODULE
-getLine' :: Player ByteString
-getLine' = do
-  result <- liftIO (getLineBuf h buf
-  buf <- readVar inputBuf
-  h <- asks handle
-  result <- liftIO (getLineBuf h buf)
-  case result of
-    ValidLine l buf' -> do
-      writeVar inputBuf buf'
-      return l
-    NeedMore buf' -> do
-      writeVar inputBuf buf'
-      getLine'
-    Disconnect -> doDie "disconnect"
-    TooLong _ -> doDie "input buffer limit reached"
-
-getLine :: Player Text
-getLine = fmap decodeUtf8 getLine'
-
-writeVar :: (PlayData -> MVar a) -> a -> Player ()
-writeVar field x = do
-  mv <- asks field
-  liftIO (putMVar mv x)
-
-readVar :: (PlayData -> MVar a) -> Player a
-readVar field = do
-  mv <- asks field
-  liftIO (takeMVar mv)
-
-doDie :: String -> Player a
-doDie msg = do
-  i <- asks connId
-  doIt <- asks die
-  let finalMsg = "connection "++show i++" dead: "++msg
-  liftIO (doIt finalMsg) -- should kill this thread
-  error "doDie: this should not have been executed"
-
-playerDialog :: Dialog ByteString a -> Player a
-playerDialog (Answer x) = return x
-playerDialog (Question q cont) = do
-  send' q
-  ans <- getLine'
-  playerDialog (cont ans)
-
-
-
+  hmm <- liftIO (Conn.getLine conn)
+  case hmm of
+    Left reason -> disconnect reason
+    Right x -> return x
 

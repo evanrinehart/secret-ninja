@@ -12,6 +12,8 @@ import qualified Control.Concurrent as T
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString as BS
 
+import Output
+
 type ConnId = Integer
 
 data Conn = Conn {
@@ -41,8 +43,8 @@ new h cid = do
     connId = cid
   }
 
-write :: ByteString -> Conn -> IO ()
-write raw conn = BS.hPut (chandle conn) raw
+write :: Output a => a -> Conn -> IO ()
+write raw conn = BS.hPut (chandle conn) (encode raw)
 
 read :: Conn -> Int -> IO ByteString
 read conn n = BS.hGetSome (chandle conn) n
@@ -53,7 +55,9 @@ getLine conn = do
   result <- getLineBuf conn buf
   case result of
     Disconnect -> return (Left "remote host disconnected")
-    TooLong _ -> return (Left "remote host sent a too-long line")
+    TooLong buf' -> do
+      writeIORef (inputBuf conn) BS.empty
+      return (Right buf')
     ValidLine l buf' -> do
       writeIORef (inputBuf conn) buf'
       return (Right l)

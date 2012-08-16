@@ -14,10 +14,24 @@ newRng = do
 --  initialize seed
   create
 
-take :: Variate a => Rng -> IO a
-take g = uniform g
+random :: Variate a => Rng -> IO a
+random g = uniform g
 
-takeR :: Variate a => (a,a) -> Rng -> IO a
-takeR r g = uniformR r g
+randomR :: Variate a => (a,a) -> Rng -> IO a
+randomR r g = uniformR r g
 
+randomPick :: [a] -> Rng -> IO a
+randomPick [] g = error "picking from empty list"
+randomPick (x:xs) g = randomPick' xs g 2 x
+
+randomPick' :: [a] -> Rng -> Integer -> a -> IO a
+randomPick' [] g n y = return y
+randomPick' (x:xs) g n y = oneOutOf n g a b where
+  a = randomPick' xs g (n+1) x
+  b = randomPick' xs g (n+1) y
+
+oneOutOf :: Integer -> Rng -> IO a -> IO a -> IO a
+oneOutOf n g io0 io1 = do
+  m <- randomR (1,fromIntegral n :: Int) g --totally wrong
+  if m == 1 then io0 else io1
 
