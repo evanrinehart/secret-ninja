@@ -91,6 +91,7 @@ askForPassword msg = do
   send msg
   send "\255\251\1"
   Right password <- fmap (parseOnly telnetPassword) getLine
+  send "\255\252\1\r\n"
   return password
 
 sendTo :: Output a => Conn -> a -> Player ()
