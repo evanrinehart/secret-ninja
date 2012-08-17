@@ -6,6 +6,7 @@ the world is stored in an acid state
 queries and updates must happen in IO
 -}
 
+import Data.Maybe
 import Data.Acid
 import Data.Typeable
 import Data.SafeCopy
@@ -29,9 +30,7 @@ import Mob
 import Room
 import Item
 
-type World = WorldState0
-
-data WorldState0 = WorldState0 {
+data World = World {
   mobs :: Map MobId Mob,
   rooms :: Map RoomId Room,
   items :: Map ItemId Item,
@@ -45,7 +44,7 @@ data WorldState0 = WorldState0 {
 } deriving (Show, Typeable)
 
 blankWorld :: World
-blankWorld = WorldState0 {
+blankWorld = World {
   mobs = M.singleton mobId0 mob0,
   rooms = M.singleton roomId0 room0,
   items = M.empty,
@@ -56,13 +55,27 @@ blankWorld = WorldState0 {
   eventQueueGT = TQ.empty
 }
 
-$(deriveSafeCopy 0 'base ''WorldState0)
+$(deriveSafeCopy 0 'base ''World)
 
 queryState :: Query World World
 queryState = ask
 
-$(makeAcidic ''WorldState0
-  ['queryState])
+--testQ :: Query World World
+--testQ = ask
+
+
+testQ :: Query World [Item]
+testQ = do
+  y <- asks itemLocations
+  im <- asks items
+  let itemIds = Y.search (InRoom roomId0) y
+  let items = catMaybes $ Prelude.map (flip M.lookup im) itemIds
+  return items
+
+
+$(makeAcidic ''World
+  ['queryState
+  ,'testQ])
 
 
 loadWorld :: IO (AcidState World)

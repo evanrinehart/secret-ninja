@@ -95,7 +95,9 @@ testPrompt = do
       testPrompt
     Right c -> case c of
       List -> do
-        sendLn "you typed list"
+        acid <- asks world
+        l <- liftIO (query acid TestQ)
+        sendLn (show l)
         testPrompt
       End -> do
         sendLn "goodbyte"
