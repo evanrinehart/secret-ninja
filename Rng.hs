@@ -7,12 +7,7 @@ import qualified Data.ByteString as B
 type Rng = Gen (PrimState IO)
 
 newRng :: IO Rng
-newRng = do
---  h <- fOpen "/dev/urandom"
---  raw <- B.hGet 16000 h
---  seed = f raw
---  initialize seed
-  create
+newRng = create -- need to seed this with /dev/urandom
 
 random :: Variate a => Rng -> IO a
 random g = uniform g
@@ -20,6 +15,7 @@ random g = uniform g
 randomR :: Variate a => (a,a) -> Rng -> IO a
 randomR r g = uniformR r g
 
+-- the randomPick is broken because Integer has no Variate instance
 randomPick :: [a] -> Rng -> IO a
 randomPick [] g = error "picking from empty list"
 randomPick (x:xs) g = randomPick' xs g 2 x
