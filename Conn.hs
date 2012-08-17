@@ -11,8 +11,10 @@ import Control.Concurrent
 import qualified Control.Concurrent as T
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString as BS
+import Data.Attoparsec.Char8
 
 import Output
+import Parsers
 
 type ConnId = Integer
 
@@ -57,10 +59,10 @@ getLine conn = do
     Disconnect -> return (Left "remote host disconnected")
     TooLong buf' -> do
       writeIORef (inputBuf conn) BS.empty
-      return (Right buf')
+      return . Right . stripTelnet $ buf'
     ValidLine l buf' -> do
       writeIORef (inputBuf conn) buf'
-      return (Right l)
+      return . Right . stripTelnet $ l
     NeedMore buf' -> do
       writeIORef (inputBuf conn) buf'
       getLine conn
@@ -76,4 +78,27 @@ getLineBuf conn buf = do
        | not (BS.null t) -> ValidLine h (BS.drop 2 t)
        | BS.length buf'' < bufSize -> NeedMore buf''
        | otherwise -> TooLong buf''
+
+stripTelnet :: ByteString -> ByteString
+stripTelnet inp = case BS.split 255 inp of
+  [] -> BS.empty
+  [clean] -> clean
+  x:xs -> BS.append x fixes where
+    fixes = BS.concat . map chopProto $ xs
+    chopProto bs = case BS.uncons bs of
+      Nothing -> BS.empty
+      Just (w,ws) -> case w of
+        w | w `elem` [251,252,253,254] -> BS.drop 1 ws
+          | otherwise -> ws -- and be damned
+
+getPassword :: Conn -> IO ByteString
+getPassword conn = do
+  let h = chandle conn
+  BS.hPut h "\255\251\1"
+  e <- getLine conn
+  case e of
+    Left problem -> error problem
+    Right pass -> do
+      BS.hPut h "\255\252\1\r\n"
+      return pass
 

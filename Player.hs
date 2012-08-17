@@ -1,5 +1,7 @@
 module Player where
 
+import Debug.Trace
+
 import Prelude hiding (getLine)
 import System.IO hiding (getLine)
 import Control.Monad.Reader
@@ -14,6 +16,7 @@ import qualified Data.Text as T
 import Data.Text
 import Data.Text.Encoding
 import Data.Attoparsec
+import Data.Attoparsec.Char8
 import qualified Data.Map as M
 
 import WorldState0
@@ -26,6 +29,7 @@ import Dialog
 import Rainbow
 import Rng
 import Output
+import Parsers
 
 type Player a = ReaderT PlayData IO a
 
@@ -75,10 +79,27 @@ login = do
   send "username: "
   username <- getLine
   password <- askForPassword "password: "
-  sendLn "fuck all yall"
-  send "one last question: "
-  _ <- getLine
-  disconnect "test over, disconnecting"
+  testPrompt
+
+tracee :: Show a => a -> a
+tracee x = trace ("TRACE: "++show x++"\n") x
+
+testPrompt :: Player ()
+testPrompt = do
+  send "> "
+  e <- fmap (parseOnly testCommand . tracee) getLine
+  case e of
+    Left problem -> do
+      send "wtf? "
+      sendLn problem
+      testPrompt
+    Right c -> case c of
+      List -> do
+        sendLn "you typed list"
+        testPrompt
+      End -> do
+        sendLn "goodbyte"
+        disconnect "player typed quit"
 
 disconnect :: String -> Player a
 disconnect msg = do
@@ -86,13 +107,10 @@ disconnect msg = do
   liftIO (io msg)
   error "die didnt"
 
-askForPassword :: String -> Player Text
+askForPassword :: String -> Player ByteString
 askForPassword msg = do
   send msg
-  send "\255\251\1"
-  Right password <- fmap (parseOnly telnetPassword) getLine
-  send "\255\252\1\r\n"
-  return password
+  asks myConn >>= liftIO . Conn.getPassword
 
 sendTo :: Output a => Conn -> a -> Player ()
 sendTo conn = liftIO . flip Conn.write conn . encode
@@ -123,15 +141,6 @@ sendToLock cid use = do
     Nothing -> return ()
     Just conn -> liftIO $ do
       withMVar (writeLock conn) (\_ -> runReaderT (use conn) r)
-
-telnetPassword :: Parser Text
-telnetPassword = do
-  hmm <- peekWord8
-  case hmm of
-    Nothing -> return (T.empty)
-    Just w -> if w == 255
-      then fmap (decodeUtf8 . BS.drop 3) takeByteString
-      else fmap decodeUtf8 takeByteString
 
 getLine :: Player ByteString
 getLine = do
