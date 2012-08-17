@@ -30,7 +30,10 @@ lookup :: ConnId -> MVar ConnSet -> IO (Maybe Conn)
 lookup cid cs = fmap (M.lookup cid) (readMVar cs)
 
 spawnConn :: MVar ConnSet -> Conn -> IO () -> IO ()
-spawnConn cs conn io = void . forkIO . finally io $ (delete cs (connId conn))
+spawnConn cs conn io = void . forkIO . finally io $ do
+  delete cs (connId conn)
+  n <- fmap length (contents cs)
+  putStrLn $ "conn thread finalizer: now "++show n++" conns left"
 
 killConn :: MVar ConnSet -> ConnId -> IO ()
 killConn cs cid = do

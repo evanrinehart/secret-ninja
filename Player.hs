@@ -87,7 +87,7 @@ tracee x = trace ("TRACE: "++show x++"\n") x
 testPrompt :: Player ()
 testPrompt = do
   send "> "
-  e <- fmap (parseOnly testCommand . tracee) getLine
+  e <- fmap (parseOnly testCommand) getLine
   case e of
     Left problem -> do
       send "wtf? "
