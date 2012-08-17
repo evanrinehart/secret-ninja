@@ -8,6 +8,3 @@ import Control.Concurrent.MVar
 import Data.String
 
 
-crlf :: IsString a => a
-crlf = "\r\n"
-
