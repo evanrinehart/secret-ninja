@@ -13,7 +13,7 @@ import qualified Data.Map as M
 import Rng
 import Conn
 import ConnSet
-import WorldState0
+import World
 import Player
 import Misc
 import qualified Counter

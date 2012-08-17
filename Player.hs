@@ -19,7 +19,7 @@ import Data.Attoparsec
 import Data.Attoparsec.Char8
 import qualified Data.Map as M
 
-import WorldState0
+import World
 import Conn hiding (getLine)
 import qualified Conn (getLine)
 import ConnSet (ConnSet)

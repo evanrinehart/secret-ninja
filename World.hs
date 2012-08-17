@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
-module WorldState0 where
+module World where
 
 {-
 the world is stored in an acid state
@@ -47,9 +47,13 @@ blankWorld :: World
 blankWorld = World {
   mobs = M.singleton mobId0 mob0,
   rooms = M.singleton roomId0 room0,
-  items = M.empty,
+  items = M.fromList [(itemId01,Item),(itemId02,Item),(itemId03,Item)],
   mobLocations = Y.empty,
-  itemLocations = Y.empty,
+  itemLocations = Y.fromList [
+     (itemId01, InRoom roomId0),
+     (itemId02, InRoom roomId0),
+     (itemId03, InRoom roomId0)
+    ],
   roomLinks = RL.empty,
   eventQueueRT = TQ.empty,
   eventQueueGT = TQ.empty

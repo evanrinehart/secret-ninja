@@ -6,6 +6,7 @@ import Data.Typeable
 import Data.SafeCopy
 import Data.Char
 import qualified Data.ByteString.Char8 as C8
+import Data.String
 
 import Rng
 
@@ -13,6 +14,9 @@ newtype RawId = RawId C8.ByteString deriving (Eq,Ord,Typeable)
 
 instance Show RawId where
   show (RawId bs) = C8.unpack bs
+
+instance IsString RawId where
+  fromString = RawId . C8.pack
 
 newtype RoomId = RoomId RawId deriving (Eq,Ord,Show,Typeable)
 newtype RoomLinkId = RoomLinkid RawId deriving (Eq,Ord,Show,Typeable)

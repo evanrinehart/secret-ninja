@@ -45,6 +45,9 @@ getV (YEntry _ v) = v
 empty :: (Ord a, Ord b, Typeable a, Typeable b) => YMap a b
 empty = X.empty
 
+fromList :: (Ord a, Ord b, Typeable a, Typeable b) => [(a,b)] -> YMap a b
+fromList xs = X.fromList (map (\(a,b) -> YEntry a b) xs)
+
 lookup :: (Ord a, Ord b, Typeable a, Typeable b) => a -> YMap a b -> Maybe b
 lookup k = fmap getV . getOne . getEQ k
 
