@@ -11,15 +11,6 @@ import Data.Text.Encoding
 
 data TestCommand = List | End deriving (Show)
 
-telnetPassword :: Parser ByteString
-telnetPassword = do
-  hmm <- peekWord8
-  case hmm of
-    Nothing -> return ""
-    Just w -> if w == 255
-      then fmap (BS.drop 3) takeByteString
-      else takeByteString
-
 testCommand :: Parser TestCommand
 testCommand = do
   skipSpace

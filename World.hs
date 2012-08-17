@@ -19,7 +19,6 @@ import qualified Data.Map as M
 import YMap
 import qualified YMap as Y
 import IdWrappers
-import Items
 import RoomLink
 import qualified RoomLink as RL
 import Event

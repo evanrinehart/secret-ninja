@@ -9,7 +9,6 @@ color :: Color -> a -> Rainbow a
 compile :: (IsString a, Monoid a) => Rainbow a -> a
 -}
 
-
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding
@@ -52,7 +51,11 @@ instance Output a => Show (Rainbow a) where
   show = show . encode
 
 instance Output a => Output (Rainbow a) where
-  encode = compile encode
+  encode (Rainbow (Endo f)) = r where
+    r = BS.concat bss
+    bss = concat $ map g (f [])
+    g (NCF a) = [encode a]
+    g (CF c a) = [codeTab c, encode a, reset]
 
 fragment :: CFrag a -> Rainbow a
 fragment cf = (Rainbow . Endo) ([cf] ++)
@@ -80,11 +83,4 @@ codeTab BrightWhite = "\ESC[1m\ESC[37m"
 
 reset :: ByteString
 reset = "\ESC[0m"
-
-compile :: (a -> ByteString) -> Rainbow a -> ByteString
-compile encode (Rainbow (Endo f)) = r where
-  r = BS.concat bss
-  bss = concat $ map g (f [])
-  g (NCF a) = [encode a]
-  g (CF c a) = [codeTab c, encode a, reset]
 
