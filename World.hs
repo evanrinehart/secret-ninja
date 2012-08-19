@@ -11,7 +11,6 @@ import Data.Acid
 import Data.Typeable
 import Data.SafeCopy
 import Data.Time
-import Control.Monad.State
 import Control.Monad.Reader
 import Data.Map
 import qualified Data.Map as M

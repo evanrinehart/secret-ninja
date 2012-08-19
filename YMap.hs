@@ -13,7 +13,6 @@ newtype if necessary.
 
 import Data.Data
 import Data.IxSet
-import Data.Typeable
 import Data.SafeCopy
 import qualified Data.IxSet as X
 

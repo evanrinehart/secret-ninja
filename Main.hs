@@ -3,21 +3,17 @@ module Main where
 import System.IO
 import Control.Monad
 import Control.Concurrent.MVar
-import Control.Concurrent
 import Data.Acid
 import Network
-import Data.IORef
-import qualified Data.ByteString as BS
-import qualified Data.Map as M
 
 import Rng
 import Conn
 import ConnSet
 import World
 import Player
-import Misc
 import qualified Counter
 
+main :: IO ()
 main = do
   g <- newRng
   rng <- newMVar g
@@ -39,7 +35,7 @@ acceptConnections acid cs rng killServer = do
   s <- listenOn (PortNumber 4545)
   idSrc <- Counter.new
   forever $ do
-    (h,hostname,port) <- accept s
+    (h,_,_) <- accept s -- handle, hostname, port
     hSetBuffering h NoBuffering
 --    print hostname
 --    print port

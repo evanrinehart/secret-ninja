@@ -7,14 +7,12 @@ import Data.IORef
 import Prelude hiding (getLine, read)
 import System.IO hiding (getLine)
 import Control.Concurrent.MVar
-import Control.Concurrent
 import qualified Control.Concurrent as T
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString as BS
 import Control.Exception
 
 import Output
-import Parsers
 
 type ConnId = Integer
 
@@ -47,7 +45,7 @@ new h cid = do
 
 write :: Output a => a -> Conn -> IO ()
 write raw conn = do
-  try $ BS.hPut (chandle conn) (encode raw) :: IO (Either IOException ())
+  _ <- try $ BS.hPut (chandle conn) (encode raw) :: IO (Either IOException ())
   return ()
 
 read :: Conn -> Int -> IO ByteString
@@ -89,9 +87,9 @@ stripTelnet inp = case BS.split 255 inp of
     fixes = BS.concat . map chopProto $ xs
     chopProto bs = case BS.uncons bs of
       Nothing -> BS.empty
-      Just (w,ws) -> case w of
-        w | w `elem` [251,252,253,254] -> BS.drop 1 ws
-          | otherwise -> ws -- and be damned
+      Just (w,ws) -> if w `elem` [251,252,253,254]
+        then BS.drop 1 ws
+        else ws -- and be damned
 
 getPassword :: Conn -> IO ByteString
 getPassword conn = do

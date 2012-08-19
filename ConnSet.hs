@@ -5,8 +5,6 @@ import Control.Monad
 import System.IO
 import Control.Exception
 import Control.Concurrent
-import Control.Concurrent.MVar
-import Data.ByteString (ByteString)
 import Data.Map (Map)
 import qualified Data.Map as M
 

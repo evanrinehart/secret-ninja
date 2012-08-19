@@ -2,7 +2,6 @@
 module GameTime where
 
 import Data.SafeCopy
-import Data.Time
 
 {-
 1 hour = 1 game day would be cool

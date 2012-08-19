@@ -10,13 +10,9 @@ import Data.Monoid
 import Data.Acid
 import Control.Concurrent.MVar
 import Control.Concurrent
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 import qualified Data.Text as T
-import Data.Text
-import Data.Text.Encoding
 import Data.Attoparsec
-import Data.Attoparsec.Char8
+import Data.ByteString (ByteString)
 import qualified Data.Map as M
 
 import World
@@ -24,8 +20,6 @@ import Conn hiding (getLine)
 import qualified Conn (getLine)
 import ConnSet (ConnSet)
 import qualified ConnSet as CS
-import Misc
-import Dialog
 import Rainbow
 import Rng
 import Output

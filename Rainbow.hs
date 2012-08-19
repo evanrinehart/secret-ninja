@@ -9,9 +9,6 @@ color :: Color -> a -> Rainbow a
 compile :: (IsString a, Monoid a) => Rainbow a -> a
 -}
 
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Text.Encoding
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import Data.Monoid

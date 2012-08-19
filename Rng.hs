@@ -2,7 +2,6 @@ module Rng where
 
 import System.Random.MWC
 import Control.Monad.Primitive
-import qualified Data.ByteString as B
 
 type Rng = Gen (PrimState IO)
 
