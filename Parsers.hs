@@ -9,15 +9,39 @@ import Data.ByteString
 import qualified Data.ByteString.Char8 as BS
 import Data.Text.Encoding
 
-data TestCommand = List | End deriving (Show)
+data TestCommand =
+  Blank |
+  List |
+  End |
+  Gossip Text deriving (Show)
 
-testCommand :: Parser TestCommand
-testCommand = do
+word :: ByteString -> TestCommand -> Parser TestCommand
+word str com = do
   skipSpace
-  w <- choice [string "list", string "quit"]
+  string str
   skipSpace
   endOfInput
-  return $ case w of
-    "list" -> List
-    "quit" -> End
-    _ -> undefined
+  return com
+
+wordRest :: ByteString -> (Text -> TestCommand) -> Parser TestCommand
+wordRest str f = do
+  skipSpace
+  string str
+  space
+  skipSpace
+  fmap (f . decodeUtf8) takeByteString
+
+blank :: Parser TestCommand
+blank = do
+  skipSpace
+  endOfInput
+  return Blank
+
+testCommand :: Parser TestCommand
+testCommand = choice
+  [blank
+  ,word "list" List
+  ,word "quit" End
+  ,wordRest "shout" Gossip]
+
+

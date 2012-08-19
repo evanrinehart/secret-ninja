@@ -82,26 +82,39 @@ login = do
   testPrompt
 
 tracee :: Show a => a -> a
-tracee x = trace ("TRACE: "++show x++"\n") x
+tracee x = trace ("TRACE: "++show x) x
 
 testPrompt :: Player ()
 testPrompt = do
-  send "> "
+  sendLock (send "> ")
   e <- fmap (parseOnly testCommand) getLine
   case e of
     Left problem -> do
-      send "wtf? "
-      sendLn problem
+      sendLock $ do
+        send "wtf? "
+        sendLn problem
       testPrompt
     Right c -> case c of
+      Blank -> do
+        testPrompt
       List -> do
         acid <- asks world
         l <- liftIO (query acid TestQ)
-        sendLn (show l)
+        sendLock (sendLn (show l))
         testPrompt
       End -> do
-        sendLn "goodbyte"
+        sendLock (sendLn "goodbyte")
         disconnect "player typed quit"
+      Gossip msg -> do
+        conns <- asks connSet >>= liftIO . CS.contents
+        forM_ conns $ \conn -> do
+          sendToLock (Left conn) $ \conn -> do
+            sendToLn conn . color Cyan . mconcat $
+              ["connection "
+              ,show . connId $ conn
+              ," gossips: "
+              ,T.unpack msg]
+        testPrompt
 
 disconnect :: String -> Player a
 disconnect msg = do
@@ -128,18 +141,22 @@ send x = asks myConn >>= flip sendTo x
 sendLn :: Output a => a -> Player ()
 sendLn x = asks myConn >>= flip sendToLn x
 
-sendLock :: (Conn -> Player ()) -> Player ()
+sendLock :: Player () -> Player ()
 sendLock use = do
   conn <- asks myConn
   r <- ask
-  liftIO $ withMVar (writeLock conn) (\_ -> runReaderT (use conn) r)
+  liftIO $ withMVar (writeLock conn) (\_ -> runReaderT use r)
 
-sendToLock :: ConnId -> (Conn -> Player ()) -> Player ()
-sendToLock cid use = do
-  r <- ask
+lookupConn :: ConnId -> Player (Maybe Conn)
+lookupConn cid = do
   mv <- asks connSet
-  conny <- liftIO $ withMVar mv (return . M.lookup cid)
-  case conny of
+  liftIO $ withMVar mv (return . M.lookup cid)
+
+sendToLock :: Either Conn ConnId -> (Conn -> Player ()) -> Player ()
+sendToLock cOrCid use = do
+  maybeConn <- either (return . Just) lookupConn cOrCid
+  r <- ask
+  case maybeConn of
     Nothing -> return ()
     Just conn -> liftIO $ do
       withMVar (writeLock conn) (\_ -> runReaderT (use conn) r)

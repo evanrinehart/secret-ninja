@@ -11,7 +11,7 @@ import Control.Concurrent
 import qualified Control.Concurrent as T
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString as BS
-import Data.Attoparsec.Char8
+import Control.Exception
 
 import Output
 import Parsers
@@ -46,7 +46,9 @@ new h cid = do
   }
 
 write :: Output a => a -> Conn -> IO ()
-write raw conn = BS.hPut (chandle conn) (encode raw)
+write raw conn = do
+  try $ BS.hPut (chandle conn) (encode raw) :: IO (Either IOException ())
+  return ()
 
 read :: Conn -> Int -> IO ByteString
 read conn n = BS.hGetSome (chandle conn) n
