@@ -30,6 +30,7 @@ main = do
   acceptConnections
     world connSet rng (putMVar finalSignal ()) (delayedSignal eventSig)
   takeMVar finalSignal
+  closeAcidState world
   return ()
 
 acceptConnections ::

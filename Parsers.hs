@@ -12,6 +12,7 @@ data TestCommand =
   Blank |
   List |
   End |
+  StopServer |
   Gossip Text deriving (Show)
 
 word :: ByteString -> TestCommand -> Parser TestCommand
@@ -41,6 +42,7 @@ testCommand = choice
   [blank
   ,word "list" List
   ,word "quit" End
+  ,word "shutdown" StopServer
   ,wordRest "shout" Gossip]
 
 

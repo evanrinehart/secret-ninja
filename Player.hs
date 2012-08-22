@@ -114,6 +114,8 @@ testPrompt = do
               ," gossips: "
               ,T.unpack msg]
         testPrompt
+      StopServer -> do
+        asks killServer >>= liftIO
 
 disconnect :: String -> Player a
 disconnect msg = do
