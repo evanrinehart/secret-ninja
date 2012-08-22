@@ -58,7 +58,7 @@ eventThread acid cs = do
   forkIO . forever $ do
     takeMVar sig
     now <- getCurrentTime
-    outs <- update acid (DoEventsU now)
+    (outs, maybeNext) <- update acid (DoEventsU now)
     forM_ outs $ \o -> case o of
       SendToAll raw -> do
         conns <- contents cs
@@ -66,11 +66,10 @@ eventThread acid cs = do
           Conn.withLock c $ do
             Conn.write raw c
             Conn.write (encode "\r\n") c
-      EventWake t -> do
-        now <- getCurrentTime
-        delayedSignal sig (diffUTCTime t now)
-        return ()
-  whenJust
+    whenJust maybeNext $ \t -> do
+      dt <- timeUntil t
+      delayedSignal sig dt
+  whenJustM
     (query acid NextEventTimeQ)
     (\t -> do
       dt <- timeUntil t

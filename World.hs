@@ -82,20 +82,18 @@ testQ = do
   return items
 
 data EventOutput = 
-  SendToAll ByteString |
-  EventWake UTCTime deriving (Show,Typeable)
+  SendToAll ByteString deriving (Show,Typeable)
 $(deriveSafeCopy 0 'base ''EventOutput)
 
-doEventsU :: UTCTime -> Update World [EventOutput]
-doEventsU now = execWriterT $ do
-  q <- gets eventQueue
-  let (es, q') = getReadyEvents now q
-  modify (\w -> w {eventQueue = q'})
-  forM_ es (\(t,e) -> execEvent t e)
-  q' <- gets eventQueue
-  case nextTime q' of
-    Nothing -> return ()
-    Just t -> tell [EventWake t]
+doEventsU :: UTCTime -> Update World ([EventOutput], Maybe UTCTime)
+doEventsU now = do
+  outs <- execWriterT $ do
+    q <- gets eventQueue
+    let (es, q') = getReadyEvents now q
+    modify (\w -> w {eventQueue = q'})
+    forM_ es (\(t,e) -> execEvent t e)
+  maybeNext <- fmap nextTime (gets eventQueue)
+  return (outs, maybeNext)
 
 execEvent ::
   UTCTime ->
