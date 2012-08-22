@@ -14,11 +14,18 @@ import Data.Time
 import Control.Monad.Reader
 import Data.Map
 import qualified Data.Map as M
+import Control.Monad.Writer
+import Control.Monad.State
+
+import Conn (Conn, ConnId)
+import qualified Conn
+import Output
+import Data.ByteString
 
 import YMap
 import qualified YMap as Y
 import IdWrappers
-import RoomLink
+import RoomLink (RoomLinkSet)
 import qualified RoomLink as RL
 import Event
 import GameTime
@@ -37,8 +44,7 @@ data World = World {
   itemLocations :: YMap ItemId ItemLoc,
   roomLinks :: RoomLinkSet,
 
-  eventQueueRT :: TimeQueue UTCTime Event,
-  eventQueueGT :: TimeQueue GameTime Event
+  eventQueue :: TimeQueue UTCTime Event
 } deriving (Show, Typeable)
 
 blankWorld :: World
@@ -53,18 +59,14 @@ blankWorld = World {
      (itemId03, InRoom roomId0)
     ],
   roomLinks = RL.empty,
-  eventQueueRT = TQ.empty,
-  eventQueueGT = TQ.empty
+  eventQueue = TQ
+    [(read "2012-08-19 16:10:00 UTC", TestEvent)]
 }
 
 $(deriveSafeCopy 0 'base ''World)
 
 queryState :: Query World World
 queryState = ask
-
---testQ :: Query World World
---testQ = ask
-
 
 testQ :: Query World [Item]
 testQ = do
@@ -74,10 +76,34 @@ testQ = do
   let items = catMaybes $ Prelude.map (flip M.lookup im) itemIds
   return items
 
+data EventOutput = 
+  SendToAll ByteString |
+  EventWake UTCTime deriving (Show,Typeable)
+$(deriveSafeCopy 0 'base ''EventOutput)
+
+doEventsU :: UTCTime -> Update World [EventOutput]
+doEventsU now = execWriterT $ do
+  q <- gets eventQueue
+  let (es, q') = getReadyEvents now q
+  modify (\w -> w {eventQueue = q'})
+  forM_ es (execEvent now)
+
+execEvent ::
+  UTCTime ->
+  Event ->
+  WriterT [EventOutput] (Update World) ()
+execEvent now e = case e of
+  TestEvent -> do
+    tell [SendToAll (encode "i love you")]
+    q <- gets eventQueue
+    let q' = schedule (addUTCTime 10 now) TestEvent q
+    modify (\w -> w {eventQueue = q'})
+  _ -> tell [SendToAll (encode "unknown event")]
 
 $(makeAcidic ''World
   ['queryState
-  ,'testQ])
+  ,'testQ
+  ,'doEventsU])
 
 
 loadWorld :: IO (AcidState World)

@@ -51,6 +51,9 @@ write raw conn = do
 read :: Conn -> Int -> IO ByteString
 read conn n = BS.hGetSome (chandle conn) n
 
+withLock :: Conn -> IO () -> IO ()
+withLock conn io = withMVar (writeLock conn) (\_ -> io)
+
 getLine :: Conn -> IO (Either String ByteString)
 getLine conn = do
   buf <- readIORef (inputBuf conn)
@@ -101,4 +104,5 @@ getPassword conn = do
     Right pass -> do
       BS.hPut h "\255\252\1\r\n"
       return pass
+
 

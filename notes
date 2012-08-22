@@ -1,10 +1,4 @@
 new goals
 
--- put dummy items in default room
--- look at them with 'list' command
--- make a command which sends the arguments to all connections
-make an event thread
-make a periodic event which sends to all connections
-prepare to modify the world state (which remembers the event queue)
 
 

@@ -23,6 +23,13 @@ schedule t x q = TQ es' where
 splitAtTime :: Ord t => t -> TimeQueue t a -> ([(t,a)], [(t,a)])
 splitAtTime t (TQ es) = span ((<= t) . fst) es
 
+shead :: TimeQueue t a -> Maybe (t,a)
+shead (TQ []) = Nothing
+shead (TQ (x:xs)) = Just x
+
+nextTime :: TimeQueue t a -> Maybe t
+nextTime q = shead q >>= \(t,_) -> Just t
+
 debug :: Show t => (a -> String) -> TimeQueue t a -> String
 debug sh (TQ es) = unlines . map (\(t,x) -> show t ++ ": " ++ sh x) $ es
 

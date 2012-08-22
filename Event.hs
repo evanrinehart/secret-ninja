@@ -9,6 +9,7 @@ data Event =
   Heal |
   Lightning |
   Spawn |
+  TestEvent |
   GeneralUpdate deriving (Show, Typeable)
 
 $(deriveSafeCopy 0 'base ''Event)

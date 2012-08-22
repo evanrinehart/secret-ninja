@@ -1,14 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Rainbow where
 
-{-
-public api here...
-data Color
-data Rainbow a (Monoid, IsString)
-color :: Color -> a -> Rainbow a
-compile :: (IsString a, Monoid a) => Rainbow a -> a
--}
-
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import Data.Monoid
