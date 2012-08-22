@@ -11,8 +11,8 @@ $(deriveSafeCopy 0 'base ''TimeQueue)
 empty :: TimeQueue t a
 empty = TQ []
 
-getReadyEvents :: Ord t => t -> TimeQueue t a -> ([a], TimeQueue t a)
-getReadyEvents t q = (map snd l, TQ r) where
+getReadyEvents :: Ord t => t -> TimeQueue t a -> ([(t,a)], TimeQueue t a)
+getReadyEvents t q = (l, TQ r) where
   (l,r) = splitAtTime t q
 
 schedule :: Ord t => t -> a -> TimeQueue t a -> TimeQueue t a

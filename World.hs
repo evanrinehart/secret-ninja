@@ -68,6 +68,11 @@ $(deriveSafeCopy 0 'base ''World)
 queryState :: Query World World
 queryState = ask
 
+nextEventTimeQ :: Query World (Maybe UTCTime)
+nextEventTimeQ = do
+  q <- asks eventQueue
+  return (nextTime q)
+
 testQ :: Query World [Item]
 testQ = do
   y <- asks itemLocations
@@ -86,7 +91,11 @@ doEventsU now = execWriterT $ do
   q <- gets eventQueue
   let (es, q') = getReadyEvents now q
   modify (\w -> w {eventQueue = q'})
-  forM_ es (execEvent now)
+  forM_ es (\(t,e) -> execEvent t e)
+  q' <- gets eventQueue
+  case nextTime q' of
+    Nothing -> return ()
+    Just t -> tell [EventWake t]
 
 execEvent ::
   UTCTime ->
@@ -103,6 +112,7 @@ execEvent now e = case e of
 $(makeAcidic ''World
   ['queryState
   ,'testQ
+  ,'nextEventTimeQ
   ,'doEventsU])
 
 

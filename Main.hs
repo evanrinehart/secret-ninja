@@ -16,6 +16,8 @@ import qualified Counter
 import Data.Time
 
 import Output
+import TimeQueue
+import Misc
 
 main :: IO ()
 main = do
@@ -24,8 +26,9 @@ main = do
   world <- loadWorld
   finalSignal <- newEmptyMVar
   connSet <- ConnSet.new
-  esig <- eventThread world connSet
-  acceptConnections world connSet rng (putMVar finalSignal ())
+  eventSig <- eventThread world connSet
+  acceptConnections
+    world connSet rng (putMVar finalSignal ()) (delayedSignal eventSig)
   takeMVar finalSignal
   return ()
 
@@ -34,21 +37,19 @@ acceptConnections ::
   MVar ConnSet ->
   MVar Rng ->
   IO () ->
+  (NominalDiffTime -> IO ()) ->
   IO ()
-acceptConnections acid cs rng killServer = const void =<< forkIO $ do
+acceptConnections acid cs rng killServer doEventsIn = void . forkIO $ do
   s <- listenOn (PortNumber 4545)
   idSrc <- Counter.new
   forever $ do
     (h,_,_) <- accept s -- handle, hostname, port
     hSetBuffering h NoBuffering
---    print hostname
---    print port
     i <- Counter.take idSrc
     conn <- Conn.new h i
-    let pd = mkPlayData conn acid cs rng killServer
+    let pd = mkPlayData conn acid cs rng killServer doEventsIn
     ConnSet.append cs conn
     ConnSet.spawnConn cs conn (runPlayer pd)
---    putStrLn $ "forked connection "++show i
 
 eventThread :: AcidState World -> MVar ConnSet -> IO (MVar ())
 eventThread acid cs = do
@@ -68,18 +69,25 @@ eventThread acid cs = do
         now <- getCurrentTime
         delayedSignal sig (diffUTCTime t now)
         return ()
-  delayedSignal sig 0
+  whenJust
+    (query acid NextEventTimeQ)
+    (\t -> do
+      dt <- timeUntil t
+      delayedSignal sig dt)
   return sig
 
 delayedSignal :: MVar () -> NominalDiffTime -> IO ()
-delayedSignal sig dt = do
-  forkIO $ do
-    let us = ceiling (1000000 * dt)
-    if dt < 0
-      then error "negative delay"
-      else if us > maxBound
-        then return ()
-        else do
-          threadDelay us
-          putMVar sig ()
-  return ()
+delayedSignal sig dt = void . forkIO $ do
+  let us = ceiling (1000000 * dt) :: Integer
+  if us > fromIntegral (maxBound :: Int)
+    then return ()
+    else do
+      when (us > 0) (threadDelay (fromIntegral us))
+      putMVar sig ()
+
+timeUntil :: UTCTime -> IO NominalDiffTime
+timeUntil t = do
+  now <- getCurrentTime
+  return (diffUTCTime t now)
+
+

@@ -2,6 +2,7 @@ module Player where
 
 import Debug.Trace
 
+import Data.Time
 import Prelude hiding (getLine)
 import System.IO hiding (getLine)
 import Control.Monad.Reader
@@ -33,7 +34,8 @@ data PlayData = PlayData {
   connSet :: MVar ConnSet,
   die :: String -> IO (),
   rng :: MVar Rng,
-  killServer :: IO ()
+  killServer :: IO (),
+  doEventsIn :: NominalDiffTime -> IO ()
 }
 
 mkPlayData ::
@@ -41,15 +43,18 @@ mkPlayData ::
   AcidState World ->
   MVar ConnSet ->
   MVar Rng ->
-  IO () -> PlayData
-mkPlayData c acid cs g k =
+  IO () ->
+  (NominalDiffTime -> IO ()) ->
+  PlayData
+mkPlayData c acid cs g k wake =
   PlayData {
     myConn = c,
     world = acid,
     connSet = cs,
     die = mkDie cs (connId c) (chandle c),
     rng = g,
-    killServer = k
+    killServer = k,
+    doEventsIn = wake
   }
 
 mkDie :: MVar ConnSet -> ConnId -> Handle -> String -> IO ()
