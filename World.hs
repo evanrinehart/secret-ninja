@@ -65,61 +65,10 @@ blankWorld = World {
 
 $(deriveSafeCopy 0 'base ''World)
 
-queryState :: Query World World
-queryState = ask
+load :: IO (AcidState World)
+load = openLocalState blankWorld
 
-nextEventTimeQ :: Query World (Maybe UTCTime)
-nextEventTimeQ = do
-  q <- asks eventQueue
-  return (nextTime q)
-
-testQ :: Query World [Item]
-testQ = do
-  y <- asks itemLocations
-  im <- asks items
-  let itemIds = Y.search (InRoom roomId0) y
-  let items = catMaybes $ Prelude.map (flip M.lookup im) itemIds
-  return items
-
-data EventOutput = 
-  SendToAll ByteString deriving (Show,Typeable)
-$(deriveSafeCopy 0 'base ''EventOutput)
-
-doEventsU :: UTCTime -> Update World ([EventOutput], Maybe UTCTime)
-doEventsU now = do
-  outs <- execWriterT $ do
-    q <- gets eventQueue
-    let (es, q') = getReadyEvents now q
-    modify (\w -> w {eventQueue = q'})
-    forM_ es (\(t,e) -> execEvent t e)
-  maybeNext <- fmap nextTime (gets eventQueue)
-  return (outs, maybeNext)
-
-execEvent ::
-  UTCTime ->
-  Event ->
-  WriterT [EventOutput] (Update World) ()
-execEvent now e = case e of
-  TestEvent -> do
-    tell [SendToAll (encode "i love you")]
-    q <- gets eventQueue
-    let q' = schedule (addUTCTime 10 now) TestEvent q
-    modify (\w -> w {eventQueue = q'})
-  _ -> tell [SendToAll (encode "unknown event")]
-
-$(makeAcidic ''World
-  ['queryState
-  ,'testQ
-  ,'nextEventTimeQ
-  ,'doEventsU])
+close :: AcidState World -> IO ()
+close acid = closeAcidState acid
 
 
-loadWorld :: IO (AcidState World)
-loadWorld = openLocalState blankWorld
-
-{-
-queryState0 :: Query WorldState0 WorldState0
-queryState0 = ask
-
-$(makeAcidic ''WorldState0 ['queryState0])
--}

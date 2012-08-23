@@ -18,20 +18,23 @@ contents mv = fmap M.elems (readMVar mv)
 new :: IO (MVar ConnSet)
 new = newMVar (M.empty)
 
-append :: MVar ConnSet -> Conn -> IO ()
-append mv conn = modifyMVar_ mv (return . M.insert (connId conn) conn)
+append :: MVar ConnSet -> Conn -> IO Int
+append mv conn = modifyMVar mv $ \m -> do
+  let m' = M.insert (connId conn) conn m
+  let n = M.size m'
+  return (m', n)
 
-delete :: MVar ConnSet -> Integer -> IO ()
-delete mv i = modifyMVar_ mv (return . M.delete i)
+delete :: MVar ConnSet -> Integer -> IO Int
+delete mv i = modifyMVar mv $ \m -> do
+  let m' = M.delete i m
+  let n = M.size m'
+  return (m', n)
+
+size :: MVar ConnSet -> IO Int
+size mv = withMVar mv M.size
 
 lookup :: ConnId -> MVar ConnSet -> IO (Maybe Conn)
 lookup cid cs = fmap (M.lookup cid) (readMVar cs)
-
-spawnConn :: MVar ConnSet -> Conn -> IO () -> IO ()
-spawnConn cs conn io = void . forkIO . finally io $ do
-  delete cs (connId conn)
-  n <- fmap length (contents cs)
-  putStrLn $ "conn thread finalizer: now "++show n++" conns left"
 
 killConn :: MVar ConnSet -> ConnId -> IO ()
 killConn cs cid = do

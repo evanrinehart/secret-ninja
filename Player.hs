@@ -27,51 +27,30 @@ import Output
 import Parsers
 
 type Player a = ReaderT PlayData IO a
-
-data PlayData = PlayData {
-  myConn :: Conn,
-  world :: AcidState World,
-  connSet :: MVar ConnSet,
-  die :: String -> IO (),
-  rng :: MVar Rng,
-  killServer :: IO (),
-  doEventsIn :: NominalDiffTime -> IO ()
-}
-
-mkPlayData ::
-  Conn ->
-  AcidState World ->
-  MVar ConnSet ->
-  MVar Rng ->
-  IO () ->
-  (NominalDiffTime -> IO ()) ->
-  PlayData
-mkPlayData c acid cs g k wake =
-  PlayData {
-    myConn = c,
-    world = acid,
-    connSet = cs,
-    die = mkDie cs (connId c) (chandle c),
-    rng = g,
-    killServer = k,
-    doEventsIn = wake
-  }
-
-mkDie :: MVar ConnSet -> ConnId -> Handle -> String -> IO ()
-mkDie cs cid h msg = do
-  modifyMVar_ cs (return . M.delete cid)
-  putStrLn msg
-  hClose h
-  tid <- myThreadId
-  killThread tid
+data PlayData = PlayData { plConn :: Conn, plMud :: Mud }
 
 runPlayer :: PlayData -> IO ()
 runPlayer pd = runReaderT login pd
+
+disconnect :: String -> Player ()
+disconnect msg = do
+  i <- asks (connId . plConn)
+  liftIO $ do
+    putStrLn ("PLAYER "++show i++": "++msg)
+    myThreadId >>= killThread
 
 rand :: (Int,Int) -> Player Int
 rand range = do
   g <- asks rng
   liftIO $ withMVar g (Rng.randomR range)
+
+getLine :: Player ByteString
+getLine = do
+  conn <- asks plConn
+  hmm <- liftIO (Conn.getLine conn)
+  case hmm of
+    Left reason -> disconnect reason
+    Right x -> return x
 
 login :: Player ()
 login = do
@@ -79,9 +58,6 @@ login = do
   username <- getLine
   password <- askForPassword "password: "
   testPrompt
-
-tracee :: Show a => a -> a
-tracee x = trace ("TRACE: "++show x) x
 
 testPrompt :: Player ()
 testPrompt = do
@@ -116,12 +92,6 @@ testPrompt = do
         testPrompt
       StopServer -> do
         asks killServer >>= liftIO
-
-disconnect :: String -> Player a
-disconnect msg = do
-  io <- asks die
-  liftIO (io msg)
-  error "die didnt"
 
 askForPassword :: String -> Player ByteString
 askForPassword msg = do
@@ -161,12 +131,4 @@ sendToLock cOrCid use = do
     Nothing -> return ()
     Just conn -> liftIO $ do
       withMVar (writeLock conn) (\_ -> runReaderT (use conn) r)
-
-getLine :: Player ByteString
-getLine = do
-  conn <- asks myConn
-  hmm <- liftIO (Conn.getLine conn)
-  case hmm of
-    Left reason -> disconnect reason
-    Right x -> return x
 

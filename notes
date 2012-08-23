@@ -1,4 +1,6 @@
 new goals
 
-
+make update methods which create items, delete items
+make event methods which encapsulate the telling of output messages
+move the event stuff around so its not in main and world
 

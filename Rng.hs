@@ -2,8 +2,12 @@ module Rng where
 
 import System.Random.MWC
 import Control.Monad.Primitive
+import Control.Concurrent.MVar
 
 type Rng = Gen (PrimState IO)
+
+new :: IO (MVar Rng)
+new = newRng >>= newMVar
 
 newRng :: IO Rng
 newRng = create -- need to seed this with /dev/urandom
