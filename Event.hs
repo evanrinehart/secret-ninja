@@ -4,7 +4,7 @@ module Event where
 import Data.SafeCopy
 import Data.Typeable
 
-import Mud
+import Data.ByteString
 
 data Event =
   Checkpoint |
@@ -21,6 +21,8 @@ data EventOutput =
   SendToAll ByteString deriving (Show,Typeable)
 
 $(deriveSafeCopy 0 'base ''EventOutput)
+
+{-
 
 execEvent ::
   UTCTime ->
@@ -46,4 +48,6 @@ execEvent now e = case e of
         createItem BrokenItem iid3 loc
       
   _ -> tell [SendToAll (encode "unknown event")]
+
+-}
 

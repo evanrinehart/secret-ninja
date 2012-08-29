@@ -8,5 +8,5 @@ main :: IO ()
 main = do
   mud <- Mud.load
   eventQueueThread mud
-  acceptConnections mud
+  listeningThread mud 4545
   Mud.closeOnFinalSignal mud

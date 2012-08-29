@@ -1,74 +1,58 @@
 {-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
 module World where
 
-{-
-the world is stored in an acid state
-queries and updates must happen in IO
--}
-
-import Data.Maybe
 import Data.Acid
-import Data.Typeable
-import Data.SafeCopy
 import Data.Time
-import Control.Monad.Reader
-import Data.Map
-import qualified Data.Map as M
-import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Writer
+import Control.Monad.Reader
+import qualified Data.Map as M
+import Data.Maybe
 
-import Conn (Conn, ConnId)
-import qualified Conn
-import Output
-import Data.ByteString
-
-import YMap
-import qualified YMap as Y
-import IdWrappers
-import RoomLink (RoomLinkSet)
-import qualified RoomLink as RL
+import WorldType
 import Event
-import GameTime
 import TimeQueue
-import qualified TimeQueue as TQ
-import Mob
-import Room
+import qualified YMap as Y
 import Item
+import Room
 
-data World = World {
-  mobs :: Map MobId Mob,
-  rooms :: Map RoomId Room,
-  items :: Map ItemId Item,
+queryState :: Query World World
+queryState = ask
 
-  mobLocations  :: YMap MobId RoomId,
-  itemLocations :: YMap ItemId ItemLoc,
-  roomLinks :: RoomLinkSet,
+testQ :: Query World [Item]
+testQ = do
+  y <- asks itemLocations
+  im <- asks items
+  let itemIds = Y.search (InRoom roomId0) y
+  let items = catMaybes $ Prelude.map (flip M.lookup im) itemIds
+  return items
 
-  eventQueue :: TimeQueue UTCTime Event
-} deriving (Show, Typeable)
+doEventsU :: UTCTime -> Update World ([EventOutput], Maybe UTCTime)
+doEventsU now = do
+  outs <- execWriterT $ do
+    q <- gets eventQueue
+    let (es, q') = getReadyEvents now q
+    modify (\w -> w {eventQueue = q'})
+    -- forM_ es (\(t,e) -> execEvent t e)
+  maybeNext <- fmap nextTime (gets eventQueue)
+  return (outs, maybeNext)
 
-blankWorld :: World
-blankWorld = World {
-  mobs = M.singleton mobId0 mob0,
-  rooms = M.singleton roomId0 room0,
-  items = M.fromList [(itemId01,Item),(itemId02,Item),(itemId03,Item)],
-  mobLocations = Y.empty,
-  itemLocations = Y.fromList [
-     (itemId01, InRoom roomId0),
-     (itemId02, InRoom roomId0),
-     (itemId03, InRoom roomId0)
-    ],
-  roomLinks = RL.empty,
-  eventQueue = TQ
-    [(read "2012-08-19 16:10:00 UTC", TestEvent)]
-}
+$(makeAcidic ''World ['doEventsU, 'testQ, 'queryState])
 
-$(deriveSafeCopy 0 'base ''World)
+nextEventTime :: AcidState World -> IO (Maybe UTCTime)
+nextEventTime acid = do
+  w <- query acid QueryState
+  return (TimeQueue.nextTime (eventQueue w))
+
+doEvents :: AcidState World -> IO ([EventOutput], Maybe UTCTime)
+doEvents acid = do
+  now <- getCurrentTime
+  update acid (DoEventsU now)
+
 
 load :: IO (AcidState World)
 load = openLocalState blankWorld
 
 close :: AcidState World -> IO ()
 close acid = closeAcidState acid
-
 

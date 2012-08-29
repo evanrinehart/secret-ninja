@@ -3,18 +3,21 @@ module Mud where
 -- looking at the servers top level IO stuff
 
 import Data.Acid
-import Control.Concurrent.MVar
+import Data.Time
+import Control.Monad
+import Control.Concurrent
 
-import qualified Rng
-import qualified ConnSet
-import qualified World
+import Rng
+import ConnSet
+import WorldType
+import World
 
 data Mud = Mud {
   world :: AcidState World,
   rng :: MVar Rng,
   connections :: MVar ConnSet,
   finalSignal :: MVar (), -- put here to kill server
-  eventSignal :: MVar (), -- put here to wake up event queue
+  eventSignal :: MVar ()  -- put here to wake up event queue
 }
 
 load :: IO Mud
@@ -33,13 +36,13 @@ closeOnFinalSignal mud = do
   World.close (world mud)
   putStrLn "SERVER: end of program"
 
-wakeAt :: UTCTime -> Mud -> IO ()
+wakeAt :: Mud -> UTCTime -> IO ()
 wakeAt mud t = do
   now <- getCurrentTime
-  wakeIn (diffUTCTime t now) mud
+  wakeIn mud (diffUTCTime t now)
 
-wakeIn :: NominalDiffTime -> Mud -> IO ()
-wakeIn dt mud = void . forkIO $ do
+wakeIn :: Mud -> NominalDiffTime -> IO ()
+wakeIn mud dt = void . forkIO $ do
   let us = ceiling (1000000 * dt) :: Integer
   if us > fromIntegral (maxBound :: Int)
     then return ()

@@ -16,6 +16,7 @@ import Data.Attoparsec
 import Data.ByteString (ByteString)
 import qualified Data.Map as M
 
+import Mud
 import World
 import Conn hiding (getLine)
 import qualified Conn (getLine)
@@ -32,25 +33,22 @@ data PlayData = PlayData { plConn :: Conn, plMud :: Mud }
 runPlayer :: PlayData -> IO ()
 runPlayer pd = runReaderT login pd
 
-disconnect :: String -> Player ()
+disconnect :: String -> Player a
 disconnect msg = do
   i <- asks (connId . plConn)
   liftIO $ do
     putStrLn ("PLAYER "++show i++": "++msg)
     myThreadId >>= killThread
+    error "disconnect: you should not have reached this point"
 
 rand :: (Int,Int) -> Player Int
 rand range = do
-  g <- asks rng
+  g <- asks (rng . plMud)
   liftIO $ withMVar g (Rng.randomR range)
 
 getLine :: Player ByteString
-getLine = do
-  conn <- asks plConn
-  hmm <- liftIO (Conn.getLine conn)
-  case hmm of
-    Left reason -> disconnect reason
-    Right x -> return x
+getLine =
+  myConn >>= liftIO . Conn.getLine >>= either disconnect return
 
 login :: Player ()
 login = do
@@ -73,7 +71,7 @@ testPrompt = do
       Blank -> do
         testPrompt
       List -> do
-        acid <- asks world
+        acid <- asks (world . plMud)
         l <- liftIO (query acid TestQ)
         sendLock (sendLn (show l))
         testPrompt
@@ -81,7 +79,7 @@ testPrompt = do
         sendLock (sendLn "goodbyte")
         disconnect "player typed quit"
       Gossip msg -> do
-        conns <- asks connSet >>= liftIO . CS.contents
+        conns <- asks (connections . plMud) >>= liftIO . CS.contents
         forM_ conns $ \conn -> do
           sendToLock (Left conn) $ \conn -> do
             sendToLn conn . color Cyan . mconcat $
@@ -90,13 +88,17 @@ testPrompt = do
               ," gossips: "
               ,T.unpack msg]
         testPrompt
-      StopServer -> do
-        asks killServer >>= liftIO
+      StopServer -> shutdownServer
+
+shutdownServer :: Player ()
+shutdownServer = do
+  signal <- asks (finalSignal . plMud)
+  liftIO (putMVar signal ())
 
 askForPassword :: String -> Player ByteString
 askForPassword msg = do
   send msg
-  asks myConn >>= liftIO . Conn.getPassword
+  asks plConn >>= liftIO . Conn.getPassword
 
 sendTo :: Output a => Conn -> a -> Player ()
 sendTo conn = liftIO . flip Conn.write conn . encode
@@ -107,20 +109,23 @@ sendToLn conn x = do
   sendTo conn "\r\n"
 
 send :: Output a => a -> Player ()
-send x = asks myConn >>= flip sendTo x
+send x = myConn >>= flip sendTo x
 
 sendLn :: Output a => a -> Player ()
-sendLn x = asks myConn >>= flip sendToLn x
+sendLn x = myConn >>= flip sendToLn x
 
 sendLock :: Player () -> Player ()
 sendLock use = do
-  conn <- asks myConn
+  conn <- myConn
   r <- ask
   liftIO $ withMVar (writeLock conn) (\_ -> runReaderT use r)
 
+myConn :: Player Conn
+myConn = asks plConn
+
 lookupConn :: ConnId -> Player (Maybe Conn)
 lookupConn cid = do
-  mv <- asks connSet
+  mv <- asks (connections . plMud)
   liftIO $ withMVar mv (return . M.lookup cid)
 
 sendToLock :: Either Conn ConnId -> (Conn -> Player ()) -> Player ()

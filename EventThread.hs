@@ -4,24 +4,28 @@ import Control.Concurrent
 import Control.Monad
 
 import Mud
-import World
 import Conn
 import Output
+import World
+import Misc
+import Event
+import ConnSet
 
 eventQueueThread :: Mud -> IO ()
 eventQueueThread mud = do
   let w = world mud
-  t <- WorldQ.nextEventTime w
+  t <- World.nextEventTime w
   whenJust t (Mud.wakeAt mud)
   forkIO . forever $ do
-    (outs, t) <- WorldU.doEvents w
-    forM_ outs doOutput
+    (outs, t) <- World.doEvents w
+    forM_ outs (doOutput mud)
     whenJust t (Mud.wakeAt mud)
+  return ()
 
-doOutput :: EventOutput -> IO ()
-doOutput out = case out of
+doOutput :: Mud -> EventOutput -> IO ()
+doOutput mud out = case out of
   SendToAll raw -> do
-    conns <- contents cs
+    conns <- ConnSet.contents (connections mud)
     forM_ conns $ \c -> do
       Conn.withLock c $ do
         Conn.write raw c

@@ -31,7 +31,7 @@ delete mv i = modifyMVar mv $ \m -> do
   return (m', n)
 
 size :: MVar ConnSet -> IO Int
-size mv = withMVar mv M.size
+size mv = withMVar mv (return . M.size)
 
 lookup :: ConnId -> MVar ConnSet -> IO (Maybe Conn)
 lookup cid cs = fmap (M.lookup cid) (readMVar cs)
