@@ -12,6 +12,7 @@ import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Typeable
 import Data.SafeCopy
+import Control.Monad.Writer
 
 import Conn (Conn, ConnId)
 import qualified Conn
@@ -30,8 +31,11 @@ import qualified TimeQueue as TQ
 import Mob
 import Room
 import Item
+import Rng
 
 data World = World {
+  rng :: Rng,
+
   mobs :: Map MobId Mob,
   rooms :: Map RoomId Room,
   items :: Map ItemId Item,
@@ -43,8 +47,9 @@ data World = World {
   eventQueue :: TimeQueue UTCTime Event
 } deriving (Show, Typeable)
 
-blankWorld :: World
-blankWorld = World {
+blankWorld :: Rng -> World
+blankWorld rng = World {
+  rng = rng,
   mobs = M.singleton mobId0 mob0,
   rooms = M.singleton roomId0 room0,
   items = M.fromList [(itemId01,Item),(itemId02,Item),(itemId03,Item)],
@@ -58,6 +63,8 @@ blankWorld = World {
   eventQueue = TQ
     [(read "2012-08-19 16:10:00 UTC", TestEvent)]
 }
+
+type EventUpdate = WriterT [EventOutput] (Update World)
 
 $(deriveSafeCopy 0 'base ''World)
 

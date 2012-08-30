@@ -14,7 +14,6 @@ import World
 
 data Mud = Mud {
   world :: AcidState World,
-  rng :: MVar Rng,
   connections :: MVar ConnSet,
   finalSignal :: MVar (), -- put here to kill server
   eventSignal :: MVar ()  -- put here to wake up event queue
@@ -22,12 +21,11 @@ data Mud = Mud {
 
 load :: IO Mud
 load = do
-  rng <- Rng.new
   world <- World.load
   conns <- ConnSet.new
   die <- newEmptyMVar
   wake <- newEmptyMVar
-  return (Mud world rng conns die wake)
+  return (Mud world conns die wake)
 
 closeOnFinalSignal :: Mud -> IO ()
 closeOnFinalSignal mud = do

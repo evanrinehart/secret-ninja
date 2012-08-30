@@ -8,13 +8,17 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import qualified Data.Map as M
 import Data.Maybe
+import System.Random
 
 import WorldType
 import Event
+import EventAction
 import TimeQueue
 import qualified YMap as Y
 import Item
 import Room
+import Rng
+import IdWrappers
 
 queryState :: Query World World
 queryState = ask
@@ -33,9 +37,10 @@ doEventsU now = do
     q <- gets eventQueue
     let (es, q') = getReadyEvents now q
     modify (\w -> w {eventQueue = q'})
-    -- forM_ es (\(t,e) -> execEvent t e)
+    forM_ es (\(t,e) -> runEvent t e)
   maybeNext <- fmap nextTime (gets eventQueue)
   return (outs, maybeNext)
+
 
 $(makeAcidic ''World ['doEventsU, 'testQ, 'queryState])
 
@@ -49,10 +54,30 @@ doEvents acid = do
   now <- getCurrentTime
   update acid (DoEventsU now)
 
-
 load :: IO (AcidState World)
-load = openLocalState blankWorld
+load = do
+  rng <- Rng.new
+  openLocalState (blankWorld rng)
 
 close :: AcidState World -> IO ()
-close acid = closeAcidState acid
+close acid = do
+  putStrLn "CLOSING ACID STATE"
+  createCheckpoint acid
+  closeAcidState acid
 
+
+randomId :: Update World RawId
+randomId = fmap numbersToId ((replicateM 40 . randomRM) (0,15))
+
+randomM :: Random a => Update World a
+randomM = liftRandom random
+
+randomRM :: Random a => (a,a) -> Update World a
+randomRM range = liftRandom (randomR range)
+
+liftRandom :: (Rng -> (a, Rng)) -> Update World a
+liftRandom gen = do
+  g <- gets rng
+  let (x, g') = gen g
+  modify (\w -> w {rng = g'})
+  return x

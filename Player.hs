@@ -41,11 +41,6 @@ disconnect msg = do
     myThreadId >>= killThread
     error "disconnect: you should not have reached this point"
 
-rand :: (Int,Int) -> Player Int
-rand range = do
-  g <- asks (rng . plMud)
-  liftIO $ withMVar g (Rng.randomR range)
-
 getLine :: Player ByteString
 getLine =
   myConn >>= liftIO . Conn.getLine >>= either disconnect return

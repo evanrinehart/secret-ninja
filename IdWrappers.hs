@@ -29,9 +29,6 @@ $(deriveSafeCopy 0 'base ''RoomLinkId)
 $(deriveSafeCopy 0 'base ''MobId)
 $(deriveSafeCopy 0 'base ''ItemId)
 
-
-randomId :: Rng -> IO RawId
-randomId g = do
-  xs <- replicateM 40 (Rng.randomR (0,15) g)
-  return . RawId . C8.pack . map intToDigit $ xs
+numbersToId :: [Int] -> RawId
+numbersToId = RawId . C8.pack . map intToDigit
 
