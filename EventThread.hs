@@ -13,10 +13,15 @@ import ConnSet
 
 eventQueueThread :: Mud -> IO ()
 eventQueueThread mud = do
+  putStrLn "EVENTS: begin"
   let w = world mud
   t <- World.nextEventTime w
+  putStrLn $ "EVENTS: next event "++show t
   whenJust t (Mud.wakeAt mud)
+  putStrLn "EVENTS: dispatch loop"
   forkIO . forever $ do
+    Mud.waitForEventSignal mud
+    putStrLn "EVENTS: event!"
     (outs, t) <- World.doEvents w
     forM_ outs (doOutput mud)
     whenJust t (Mud.wakeAt mud)

@@ -56,8 +56,12 @@ doEvents acid = do
 
 load :: IO (AcidState World)
 load = do
+  putStrLn "WORLD: loading..."
   rng <- Rng.new
-  openLocalState (blankWorld rng)
+  putStrLn "WORLD: io generated rng"
+  acid <- openLocalState (blankWorld rng)
+  putStrLn "WORLD: loaded"
+  return acid
 
 close :: AcidState World -> IO ()
 close acid = do

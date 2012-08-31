@@ -48,3 +48,5 @@ wakeIn mud dt = void . forkIO $ do
       when (us > 0) (threadDelay (fromIntegral us))
       putMVar (eventSignal mud) ()
 
+waitForEventSignal :: Mud -> IO ()
+waitForEventSignal = takeMVar . eventSignal
