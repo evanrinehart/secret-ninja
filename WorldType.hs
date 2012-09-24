@@ -34,7 +34,9 @@ import Item
 import Rng
 
 data World = World {
-  rng :: Rng,
+  justCreated :: Bool,
+  rng :: MainRng,
+  idGen :: AuxRng,
 
   mobs :: Map MobId Mob,
   rooms :: Map RoomId Room,
@@ -47,9 +49,11 @@ data World = World {
   eventQueue :: TimeQueue UTCTime Event
 } deriving (Show, Typeable)
 
-blankWorld :: Rng -> World
-blankWorld rng = World {
-  rng = rng,
+blankWorld :: World
+blankWorld = World {
+  justCreated = True,
+  rng = MainRng Rng.zero,
+  idGen = AuxRng Rng.zero,
   mobs = M.singleton mobId0 mob0,
   rooms = M.singleton roomId0 room0,
   items = M.fromList [(itemId01,Item),(itemId02,Item),(itemId03,Item)],

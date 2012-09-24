@@ -19,17 +19,10 @@ import Item
 import Room
 import Rng
 import IdWrappers
+import Dice
 
 queryState :: Query World World
 queryState = ask
-
-testQ :: Query World [Item]
-testQ = do
-  y <- asks itemLocations
-  im <- asks items
-  let itemIds = Y.search (InRoom roomId0) y
-  let items = catMaybes $ Prelude.map (flip M.lookup im) itemIds
-  return items
 
 doEventsU :: UTCTime -> Update World ([EventOutput], Maybe UTCTime)
 doEventsU now = do
@@ -41,12 +34,40 @@ doEventsU now = do
   maybeNext <- fmap nextTime (gets eventQueue)
   return (outs, maybeNext)
 
+benchU :: Update World [Int]
+benchU = do
+  roll 5
 
-$(makeAcidic ''World ['doEventsU, 'testQ, 'queryState])
+{-
+might be useful at this point to list all the updates which
+would be needed at the IO <-> World interface.
+
+execute events (used by the event thread)
+the rest used by player threads
+  enqueue event
+  create object
+  move object
+  update player settings
+  update object description
+-}
+
+setRandomSeedU :: Rng -> Rng -> Update World ()
+setRandomSeedU mainRng auxRng = do
+  modify $ \w -> w {
+    justCreated = False,
+    rng = MainRng mainRng,
+    idGen = AuxRng auxRng
+  }
+
+$(makeAcidic ''World [
+  'queryState,
+  'doEventsU,
+  'benchU,
+  'setRandomSeedU])
 
 nextEventTime :: AcidState World -> IO (Maybe UTCTime)
 nextEventTime acid = do
-  w <- query acid QueryState
+  w <- queryWorld acid
   return (TimeQueue.nextTime (eventQueue w))
 
 doEvents :: AcidState World -> IO ([EventOutput], Maybe UTCTime)
@@ -54,12 +75,19 @@ doEvents acid = do
   now <- getCurrentTime
   update acid (DoEventsU now)
 
+queryWorld :: AcidState World -> IO World
+queryWorld acid = query acid QueryState
+
 load :: IO (AcidState World)
 load = do
   putStrLn "WORLD: loading..."
-  rng <- Rng.new
-  putStrLn "WORLD: io generated rng"
-  acid <- openLocalState (blankWorld rng)
+  acid <- openLocalState blankWorld
+  w <- queryWorld acid
+  when (justCreated w) $ do
+    putStrLn "WORLD: initializing random seed"
+    g1 <- Rng.new
+    g2 <- Rng.new
+    update acid (SetRandomSeedU g1 g2)
   putStrLn "WORLD: loaded"
   return acid
 
@@ -69,19 +97,3 @@ close acid = do
   createCheckpoint acid
   closeAcidState acid
 
-
-randomId :: Update World RawId
-randomId = fmap numbersToId ((replicateM 40 . randomRM) (0,15))
-
-randomM :: Random a => Update World a
-randomM = liftRandom random
-
-randomRM :: Random a => (a,a) -> Update World a
-randomRM range = liftRandom (randomR range)
-
-liftRandom :: (Rng -> (a, Rng)) -> Update World a
-liftRandom gen = do
-  g <- gets rng
-  let (x, g') = gen g
-  modify (\w -> w {rng = g'})
-  return x

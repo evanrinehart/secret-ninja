@@ -18,6 +18,7 @@ import qualified Data.Map as M
 
 import Mud
 import World
+import WorldType
 import Conn hiding (getLine)
 import qualified Conn (getLine)
 import ConnSet (ConnSet)
@@ -32,6 +33,12 @@ data PlayData = PlayData { plConn :: Conn, plMud :: Mud }
 
 runPlayer :: PlayData -> IO ()
 runPlayer pd = runReaderT login pd
+
+askWorld :: (World -> a) -> Player a
+askWorld f = do
+  acid <- asks (world . plMud)
+  w <- liftIO (queryWorld acid)
+  return (f w)
 
 disconnect :: String -> Player a
 disconnect msg = do
@@ -66,9 +73,7 @@ testPrompt = do
       Blank -> do
         testPrompt
       List -> do
-        acid <- asks (world . plMud)
-        l <- liftIO (query acid TestQ)
-        sendLock (sendLn (show l))
+        sendLock (sendLn "i removed this command")
         testPrompt
       End -> do
         sendLock (sendLn "goodbyte")

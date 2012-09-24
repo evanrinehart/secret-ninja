@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable, TypeFamilies, TemplateHaskell, GeneralizedNewtypeDeriving #-}
 module Rng where
 
 import System.Random
@@ -23,6 +23,9 @@ to seed the generator, use 16 bytes of random data (restore)
 
 type Rng = Counter16
 
+newtype MainRng = MainRng Rng deriving (Show, SafeCopy)
+newtype AuxRng = AuxRng Rng deriving (Show, SafeCopy)
+
 instance RandomGen Counter16 where
   next g = (extract4 . hash $ g, plusOne g)
   split g = random g
@@ -43,6 +46,9 @@ save = encode
 restore :: ByteString -> Rng
 restore = either error id . decode
 
+zero :: Rng
+zero = Counter16.zero
+
 ---
 
 extract4 :: ByteString -> Int
@@ -54,6 +60,7 @@ extractN n =
   implode .
   BS.unpack .
   BS.take n
+
 
 -- need to rewrite in terms of new interface
 {-
