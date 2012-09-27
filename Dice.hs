@@ -31,3 +31,8 @@ randomId = withAuxRng $ do
   ns <- replicateM 40 (state $ randomR (0,15))
   return (numbersToId ns)
 
+-- 5d6 IO
+roll' :: IO ([Int], Int)
+roll' = do
+  ds <- replicateM 5 $ randomRIO (1,6)
+  return (ds, sum (filter (>= 5) ds))

@@ -5,6 +5,7 @@ import Data.IxSet
 import Control.Applicative
 import Data.Typeable
 import Data.SafeCopy
+import Data.ByteString (ByteString)
 
 import IdWrappers
 import Names
@@ -17,7 +18,7 @@ $(deriveSafeCopy 0 'base ''ToRoom)
 
 data RoomLink = RoomLink {
   id :: RoomLinkId,
-  name :: Names,
+  name :: Names ByteString,
   fromRoom :: FromRoom,
   toRoom :: ToRoom,
   door :: Maybe Door
